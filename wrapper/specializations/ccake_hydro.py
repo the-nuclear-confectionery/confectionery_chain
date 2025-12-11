@@ -134,24 +134,45 @@ class CCAKEHydro(Hydrodynamics):
                 'T': hydrodynamics['particlization']['T']
             },
             'hydro': {
-                'baryon_charge_enabled': hydrodynamics['hydro']['baryon_charge_enabled'],
+                                                                                                                                                                                                                                'baryon_charge_enabled':  hydrodynamics['hydro']['baryon_charge_enabled'],
                 'strange_charge_enabled': hydrodynamics['hydro']['strange_charge_enabled'],
                 'electric_charge_enabled': hydrodynamics['hydro']['electric_charge_enabled'],
+            
                 'viscous_parameters': {
                     'shear': {
-                        'mode': hydrodynamics['hydro']['viscous_parameters']['shear']['mode'],
-                        'constant_eta_over_s': hydrodynamics['hydro']['viscous_parameters']['shear']['constant_eta_over_s'],
-                        'relaxation_mode': hydrodynamics['hydro']['viscous_parameters']['shear']['relaxation_mode']
+                        'input_initial_shear':  hydrodynamics['hydro']['viscous_parameters']['shear']['input_initial_shear'],
+                        'mode':                 hydrodynamics['hydro']['viscous_parameters']['shear']['mode'],
+                        'constant_eta_over_s':  hydrodynamics['hydro']['viscous_parameters']['shear']['constant_eta_over_s'],
+                        'relaxation_mode':      hydrodynamics['hydro']['viscous_parameters']['shear']['relaxation_mode'],
+                        'use_vorticity':        hydrodynamics['hydro']['viscous_parameters']['shear']['use_vorticity'],
+                        'delta_pipi_mode':      hydrodynamics['hydro']['viscous_parameters']['shear']['delta_pipi_mode'],
+                        'tau_pipi_mode':        hydrodynamics['hydro']['viscous_parameters']['shear']['tau_pipi_mode'],
+                        'lambda_piPi_mode':     hydrodynamics['hydro']['viscous_parameters']['shear']['lambda_piPi_mode'],
+                        'phi6_mode':            hydrodynamics['hydro']['viscous_parameters']['shear']['phi6_mode'],                                                                 
+                        'phi7_mode':            hydrodynamics['hydro']['viscous_parameters']['shear']['phi7_mode'],
                     },
+            
                     'bulk': {
-                        'mode': hydrodynamics['hydro']['viscous_parameters']['bulk']['mode'],
+                        'bulk_from_trace':      hydrodynamics['hydro']['viscous_parameters']['bulk']['bulk_from_trace'],
+                        'mode':                 hydrodynamics['hydro']['viscous_parameters']['bulk']['mode'],
                         'constant_zeta_over_s': hydrodynamics['hydro']['viscous_parameters']['bulk']['constant_zeta_over_s'],
                         'cs2_dependent_zeta_A': hydrodynamics['hydro']['viscous_parameters']['bulk']['cs2_dependent_zeta_A'],
                         'cs2_dependent_zeta_p': hydrodynamics['hydro']['viscous_parameters']['bulk']['cs2_dependent_zeta_p'],
-                        'relaxation_mode': hydrodynamics['hydro']['viscous_parameters']['bulk']['relaxation_mode'],
-                        'modulate_with_tanh': hydrodynamics['hydro']['viscous_parameters']['bulk']['modulate_with_tanh']
-                    }
-                }
+                        'relaxation_mode':      hydrodynamics['hydro']['viscous_parameters']['bulk']['relaxation_mode'],
+                        'modulate_with_tanh':   hydrodynamics['hydro']['viscous_parameters']['bulk']['modulate_with_tanh'],
+                        'delta_PiPi_mode':      hydrodynamics['hydro']['viscous_parameters']['bulk']['delta_PiPi_mode'],
+                        'lambda_Pipi_mode':     hydrodynamics['hydro']['viscous_parameters']['bulk']['lambda_Pipi_mode'],
+                        'phi1_mode':            hydrodynamics['hydro']['viscous_parameters']['bulk']['phi1_mode'],
+                        'phi3_mode':            hydrodynamics['hydro']['viscous_parameters']['bulk']['phi3_mode'],
+                    },
+            
+                    'diffusion': {
+                        'input_initial_diffusion': hydrodynamics['hydro']['viscous_parameters']['diffusion']['input_initial_diffusion'],
+                        'mode':                    hydrodynamics['hydro']['viscous_parameters']['diffusion']['mode'],
+                        'constant_kappa_over_T2':  hydrodynamics['hydro']['viscous_parameters']['diffusion']['constant_kappa_over_T2'],
+                        'relaxation_mode':         hydrodynamics['hydro']['viscous_parameters']['diffusion']['relaxation_mode'],
+                    },
+                },
             },
             'output': {
                 'print_conservation_state': hydrodynamics['output']['print_conservation_state'],

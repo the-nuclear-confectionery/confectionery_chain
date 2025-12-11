@@ -5,7 +5,7 @@
 [submodule "models/CCAKE"]
 	path = models/CCAKE
 	url = git@github.com:the-nuclear-confectionery/CCAKE.git
-	branch = DNMR
+	branch = main
 [submodule "models/smash"]
 	path = models/smash
 	url = git@github.com:the-nuclear-confectionery/smash.git

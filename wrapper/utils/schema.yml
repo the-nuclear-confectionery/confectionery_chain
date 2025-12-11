@@ -799,7 +799,7 @@ properties:
                 description: "Time step of the simulation in fm/c."
               h_T:
                 type: number
-                default: 0.5
+                default: 0.3
                 description: "Smoothing parameter in the transverse direction (in fm)."
               h_eta:
                 type: number
@@ -816,7 +816,7 @@ properties:
                 description: "Kernel type for smoothing."
               energy_cutoff:
                 type: number
-                default: 0.0
+                default: 0.15
                 description: "Energy threshold (GeV/fm³) below which particles are deleted."
               max_tau:
                 type: number
@@ -907,13 +907,47 @@ properties:
                         description: "Shear viscosity mode."
                       constant_eta_over_s:
                         type: number
-                        default: 0.
+                        default: 0.12
                         description: "Constant shear viscosity value."
                       relaxation_mode:
                         type: string
                         enum: [default, gubser]
                         default: default
                         description: "Shear relaxation coefficient mode."
+                      input_initial_shear:
+                        type: boolean
+                        default: false
+                        description: "Whether to read an initial shear tensor from input."
+                      use_vorticity:
+                        type: boolean
+                        default: false
+                        description: "Enable vorticity correction in shear evolution."
+                      delta_pipi_mode:
+                        type: string
+                        enum: [default]
+                        default: default
+                        description: "Delta Pi-Pi coupling mode."
+                      tau_pipi_mode:
+                        type: string
+                        enum: [disabled]
+                        default: disabled
+                        description: "Tau Pi-Pi coupling mode."
+                      lambda_piPi_mode:
+                        type: string
+                        enum: [disabled]
+                        default: disabled
+                        description: "Lambda Pi-Pi coupling mode."
+                      phi6_mode:
+                        type: string
+                        enum: [disabled]
+                        default: disabled
+                        description: "Phi6 mode."
+                      phi7_mode:
+                        type: string
+                        enum: [disabled]
+                        default: disabled
+                        description: "Phi7 mode."
+
                   bulk:
                     type: object
                     properties:
@@ -924,7 +958,7 @@ properties:
                         description: "Bulk viscosity mode."
                       constant_zeta_over_s:
                         type: number
-                        default: 0.
+                        default: 0.0
                         description: "Constant bulk viscosity value."
                       cs2_dependent_zeta_A:
                         type: number
@@ -943,6 +977,58 @@ properties:
                         type: boolean
                         default: false
                         description: "Use tanh modulation for bulk viscosity."
+                      bulk_from_trace:
+                        type: boolean
+                        default: false
+                        description: "Compute bulk pressure from trace of energy-momentum tensor."
+                      delta_PiPi_mode:
+                        type: string
+                        enum: [israel-stewart]
+                        default: israel-stewart
+                        description: "Delta Pi-Pi mode."
+                      lambda_Pipi_mode:
+                        type: string
+                        enum: [disabled]
+                        default: disabled
+                        description: "Lambda Pi-Pi mode."
+                      phi1_mode:
+                        type: string
+                        enum: [disabled]
+                        default: disabled
+                        description: "Phi1 mode."
+                      phi3_mode:
+                        type: string
+                        enum: [disabled]
+                        default: disabled
+                        description: "Phi3 mode."
+                  diffusion:
+                    type: object
+                    properties:
+                      input_initial_diffusion:
+                        type: boolean
+                        default: false
+                        description: "Whether to read an initial diffusion current from input."
+                      mode:
+                        type: string
+                        enum: [constant_over_T2]
+                        default: constant_over_T2
+                        description: "Diffusion coefficient mode."
+                      constant_kappa_over_T2:
+                        type: array
+                        minItems: 3
+                        maxItems: 3
+                        items:
+                          type: array
+                          minItems: 3
+                          maxItems: 3
+                          items:
+                            type: number
+                        description: "3×3 constant diffusion tensor (kappa/T^2)."
+                      relaxation_mode:
+                        type: string
+                        enum: [constant_over_T]
+                        default: constant_over_T
+                        description: "Relaxation mode for diffusion."
 
           output:
             type: object

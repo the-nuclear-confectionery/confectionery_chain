@@ -29,6 +29,8 @@ class QVectorWritterAnalysis(Analysis):
             else:
                 if parameters.get('input_file', 'default') == 'default':
                     raise ValueError("Afterburner is disabled, input_file must be specified.")
+                if parameters.get('input_type' ) == 'default':
+                    raise ValueError("Afterburner is disabled, input_type must be specified.")
         elif self.config['input']['afterburner']['type'] == 'smash':
             formats = self.config['input']['afterburner']['parameters']['Output']['Particles']['Format']
             output_path = os.path.join(

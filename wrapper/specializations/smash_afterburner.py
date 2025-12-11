@@ -19,7 +19,7 @@ class SMASHAfterburner(Afterburner):
         else:
             #change params
             self.config['input']['afterburner']['parameters']['Collision_Term']['No_Collisions'] = False
-            self.config['input']['afterburner']['parameters']['Collision_Term']['Force_Decays_At_End'] = False
+            self.config['input']['afterburner']['parameters']['Collision_Term']['Force_Decays_At_End'] = True
 
         #check for particleziation module
         if self.config['input']['particlization']['type'] == None:
