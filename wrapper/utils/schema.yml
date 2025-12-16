@@ -1017,6 +1017,10 @@ properties:
                         type: array
                         minItems: 3
                         maxItems: 3
+                        default:
+                          - [0.0, 0.0, 0.0]
+                          - [0.0, 0.0, 0.0]
+                          - [0.0, 0.0, 0.0]
                         items:
                           type: array
                           minItems: 3
