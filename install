@@ -181,7 +181,7 @@ cp -rf $WORKDIR/models/iS3D/tables tables/iS3D
 cp -rf $WORKDIR/models/iS3D/PDG tables/iS3D
 cp -rf $WORKDIR/models/iS3D/deltaf_coefficients tables/iS3D
 
-cp -rf $WORKDIR/models/BQSSampler/integration_tables/*.dat tables/BQSSampler/
+cp -rf $WORKDIR/models/BQSSampler/tables/*.dat tables/BQSSampler/
 cp -rf $WORKDIR/models/BQSSampler/particles/*.dat tables/BQSSampler/
 cp -rf $WORKDIR/models/BQSSampler/utils/*.dat tables/BQSSampler/
 
