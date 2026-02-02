@@ -1160,6 +1160,7 @@ properties:
                     delta_f_shear: { type: boolean, default: false }
                     delta_f_diffusion: { type: boolean, default: false }
                     delta_f_bulk: { type: boolean, default: false }
+                    normalize_deltaf: { type: boolean, default: true }
                     seed:
                       anyOf: [{ type: string }, { type: integer }]
                       default: "random"

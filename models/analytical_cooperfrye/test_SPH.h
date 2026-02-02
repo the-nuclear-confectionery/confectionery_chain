@@ -518,16 +518,45 @@ void SPH<D,DD>::readin2(int cev)
         } 
 	else if (typ==5) //v2
 	{
-	while (!feof(myfile))   // runs over all the SPH particles in the event
+	while (1)   // runs over all the SPH particles in the event
 	{
-	fscanf(myfile,"%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n"
-		 ,&par2[i].n.x[0],&par2[i].n.x[1],&par2[i].n.x[2],&par2[i].u.x[0],&par2[i].u.x[1],&par2[i].u.x[2],&par2[i].vol
-		 ,&par2[i].bulkpi,&par2[i].pi00,&par2[i].pi11,&par2[i].pi22,&par2[i].pi33,&par2[i].pi12,&par2[i].tau,&par2[i].r.x[0]
-		 ,&par2[i].r.x[1],&par2[i].s,&par2[i].energy,&par2[i].T,&par2[i].muB,&par2[i].muS,&par2[i].muQ
-		 ,&par2[i].enthalpy,&par2[i].cs2);; 
+		int c = fgetc(myfile);
+		if (c == EOF) break;
+
+		// skip leading spaces/tabs
+		while (c == ' ' || c == '\t' || c == '\r')
+		{
+			c = fgetc(myfile);
+			if (c == EOF) break;
+		}
+		if (c == EOF) break;
+
+		// skip header/comment lines
+		if (c == '#')
+		{
+			while ((c = fgetc(myfile)) != '\n' && c != EOF) {}
+			continue;
+		}
+
+		// not a comment: put back for fscanf
+		ungetc(c, myfile);
+
+	fscanf(myfile,"%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf"
+		 ,&par2[i].n.x[0],&par2[i].n.x[1],&par2[i].n.x[2]
+		 ,&par2[i].u.x[0],&par2[i].u.x[1],&par2[i].u.x[2],&par2[i].vol
+		 ,&par2[i].bulkpi,&par2[i].pi00,&par2[i].pi11,&par2[i].pi22
+		 ,&par2[i].pi33,&par2[i].pi12,&par2[i].tau,&par2[i].r.x[0]
+		 ,&par2[i].r.x[1],&par2[i].s,&par2[i].energy,&par2[i].T
+		 ,&par2[i].muB,&par2[i].muS,&par2[i].muQ
+		 ,&par2[i].enthalpy,&par2[i].cs2);
+
+		// discard remaining columns in this line
+		while ((c = fgetc(myfile)) != '\n' && c != EOF) {}
+
 	par2[i].vol/=sc3;
 	par2[i].pi33*=par2[i].tau*par2[i].tau;
 	par2[i].nu=par2[i].n&par2[i].u;
+
 	if (par2[i].nu<0)
 	{
 		
@@ -542,7 +571,8 @@ void SPH<D,DD>::readin2(int cev)
 	
 	
 	}
-	}			
+	}
+	
 	fclose(myfile);
 	
 	avgnu/=i;
