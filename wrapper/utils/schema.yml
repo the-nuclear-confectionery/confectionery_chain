@@ -1158,6 +1158,8 @@ properties:
                       enum: [regular, conserved]
                       default: regular
                     delta_f_shear: { type: boolean, default: false }
+                    delta_f_diffusion: { type: boolean, default: false }
+                    delta_f_bulk: { type: boolean, default: false }
                     seed:
                       anyOf: [{ type: string }, { type: integer }]
                       default: "random"

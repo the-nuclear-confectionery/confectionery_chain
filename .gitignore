@@ -10,3 +10,4 @@ analysis/build
 models/AMPT
 models/decays/*.o
 wrapper/external_packages
+.vscode
