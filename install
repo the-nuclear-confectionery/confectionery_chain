@@ -122,6 +122,7 @@ cmake ..
 make -j8 install
 
 cd $WORKDIR/models/BQSSampler
+cat tables/grad_coeffs.dat.part_* > tables/grad_coeffs.dat
 mkdir build && cd build
 cmake .. 
 make -j8 
