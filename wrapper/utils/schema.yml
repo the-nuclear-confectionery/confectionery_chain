@@ -953,8 +953,8 @@ properties:
                     properties:
                       mode:
                         type: string
-                        enum: [constant]
-                        default: constant
+                        enum: [constant, cs2_dependent, disabled]
+                        default: cs2_dependent
                         description: "Bulk viscosity mode."
                       constant_zeta_over_s:
                         type: number
@@ -1033,7 +1033,26 @@ properties:
                         enum: [constant_over_T]
                         default: constant_over_T
                         description: "Relaxation mode for diffusion."
-
+            source:
+            properties:
+              type:
+                type: string
+                enum: [ic,jet]
+                default: disabled
+                description: "Type of source term in hydrodynamics."
+              models:
+                type: string
+                enum: [AMPT, JEWEL, SMASH, BBMG,toy_model]
+                description: "Model used for source term."
+              smearing_radius:
+                type: number
+                default: 1.0
+                description: "Smearing radius for source term in fm."
+              file_path:
+                type: string
+                default: ""
+                description: "Path to the source term file."
+              
           output:
             type: object
             properties:
