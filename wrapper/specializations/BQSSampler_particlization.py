@@ -139,6 +139,8 @@ class BQSSamplerParticlization(Particlization):
                 f.write(f"use_muq {bool(p['use_muQ'])}\n")
                 f.write(f"samples {p['samples']}\n")
                 f.write(f"sampling_method {p['sampling_method']}\n")
+                f.write(f"force_temperature {bool(p['force_temperature'])}\n")
+                f.write(f"temperature {p['temperature']}\n")
                 f.write(f"delta_f_shear {bool(p['delta_f_shear'])}\n")
                 f.write(f"delta_f_diffusion {bool(p.get('delta_f_diffusion', False))}\n")
                 f.write(f"delta_f_bulk {bool(p.get('delta_f_bulk', False)) }\n")

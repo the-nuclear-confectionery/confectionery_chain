@@ -137,7 +137,17 @@ class CCAKEHydro(Hydrodynamics):
                                                                                                                                                                                                                                 'baryon_charge_enabled':  hydrodynamics['hydro']['baryon_charge_enabled'],
                 'strange_charge_enabled': hydrodynamics['hydro']['strange_charge_enabled'],
                 'electric_charge_enabled': hydrodynamics['hydro']['electric_charge_enabled'],
-            
+                'source': {
+                   'type': hydrodynamics['hydro']['source']['type'],
+                   'model': hydrodynamics['hydro']['source']['model'],
+                   'normalization': hydrodynamics['hydro']['source']['normalization'],
+                   'smearing_radius': hydrodynamics['hydro']['source']['smearing_radius'],
+                   'file': hydrodynamics['hydro']['source']['file'],
+                   'enable_baryon': hydrodynamics['hydro']['source']['enable_baryon'],
+                   'enable_electric': hydrodynamics['hydro']['source']['enable_electric'],
+                   'enable_strange': hydrodynamics['hydro']['source']['enable_strange'],
+                },
+                               
                 'viscous_parameters': {
                     'shear': {
                         'input_initial_shear':  hydrodynamics['hydro']['viscous_parameters']['shear']['input_initial_shear'],

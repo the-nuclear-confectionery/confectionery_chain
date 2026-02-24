@@ -1034,13 +1034,14 @@ properties:
                         default: constant_over_T
                         description: "Relaxation mode for diffusion."
             source:
+            type: object
             properties:
               type:
                 type: string
-                enum: [ic,jet]
+                enum: [ic,jet,disabled]
                 default: disabled
                 description: "Type of source term in hydrodynamics."
-              models:
+              model:
                 type: string
                 enum: [AMPT, JEWEL, SMASH, BBMG,toy_model]
                 description: "Model used for source term."
@@ -1052,6 +1053,22 @@ properties:
                 type: string
                 default: ""
                 description: "Path to the source term file."
+              normalization:
+                type: number
+                default: 1.0
+                description: "Normalization factor for the source term."
+              enable_baryon:
+                type: boolean
+                default: false
+                description: "Enable baryon number source term."
+              enable_electric:
+                type: boolean
+                default: false
+                description: "Enable electric charge source term."
+              enable_strange:
+                type: boolean
+                default: false
+                description: "Enable strange charge source term."
               
           output:
             type: object
@@ -1171,15 +1188,17 @@ properties:
                     use_muB: { type: boolean, default: false }
                     use_muS: { type: boolean, default: false }
                     use_muQ: { type: boolean, default: false }
+                    force_temperature: { type: boolean, default: false }
+                    temperature: { type: number, default: 0.150 }
                     samples: { type: integer, minimum: 1, default: 100 }
                     sampling_method:
                       type: string
-                      enum: [regular, conserved]
+                      enum: [regular, conserved_charge]
                       default: regular
                     delta_f_shear: { type: boolean, default: false }
                     delta_f_diffusion: { type: boolean, default: false }
                     delta_f_bulk: { type: boolean, default: false }
-                    normalize_deltaf: { type: boolean, default: true }
+                    normalize_deltaf: { type: boolean, default: false }
                     seed:
                       anyOf: [{ type: string }, { type: integer }]
                       default: "random"
@@ -1261,8 +1280,8 @@ properties:
                       properties:
                         Modus:          { type: string, enum: [List],  default: List }
                         Time_Step_Mode: { type: string, enum: [Fixed], default: Fixed }
-                        Delta_Time:     { type: number, default: 1.0 }
-                        End_Time:       { type: number, default: 1000.0 }
+                        Delta_Time:     { type: number, default: 5.0 }
+                        End_Time:       { type: number, default: 5000.0 }
                         seed:
                           anyOf: [{ type: string }, { type: integer }]
                           default: random
@@ -1324,7 +1343,7 @@ properties:
                       description: "Output directory for the decayed spectra."
                     use_corrected:
                       type: boolean
-                      default: true
+                      default: false
                       description: "Use corrected spectra if true; otherwise, use uncorrected."
 
       analysis:
@@ -1387,7 +1406,7 @@ properties:
       
               input_type:
                 type: string
-                enum: ["smash_hepmc3", "smash_oscar", "afterdecays","default"]
+                enum: ["smash_hepmc3", "smash_oscar", "afterdecays","default","oscar_sampler"]
                 default: "default"
                 description: "Input format to be parsed."
       

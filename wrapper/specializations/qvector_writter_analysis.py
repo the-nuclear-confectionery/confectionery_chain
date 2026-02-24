@@ -26,6 +26,12 @@ class QVectorWritterAnalysis(Analysis):
                 if 'input_type' not in parameters or parameters['input_type'] == 'default':
                     parameters['input_type'] = 'afterdecays'
                 print("No afterburner specified; using corrected spectra from analytical cooperfrye")
+            elif self.config['input']['particlization']['type'] == 'BQSSampler':
+                file_bqssampler = os.path.join(self.config['global']['output'], f"event_{event_id}", "BQSSampler", "particle_list.dat")
+                parameters['input_file'] = file_bqssampler
+                print("No afterburner specified; using particle list from BQSSampler")
+                if 'input_type' not in parameters or parameters['input_type'] == 'default':
+                    parameters['input_type'] = 'oscar_sampler'
             else:
                 if parameters.get('input_file', 'default') == 'default':
                     raise ValueError("Afterburner is disabled, input_file must be specified.")

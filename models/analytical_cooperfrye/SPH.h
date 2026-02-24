@@ -479,7 +479,6 @@ void SPH<D,DD>::readin2(int cev)
 		 ,&par2[i].r.x[1],&par2[i].s,&par2[i].energy,&par2[i].T
 		 ,&par2[i].muB,&par2[i].muS,&par2[i].muQ
 		 ,&par2[i].enthalpy,&par2[i].cs2);
-
 		// discard remaining columns in this line
 		while ((c = fgetc(myfile)) != '\n' && c != EOF) {}
 
