@@ -35,6 +35,7 @@
 [submodule "models/decays"]
 	path = models/decays
 	url = git@github.com:the-nuclear-confectionery/decays.git
+	branch = nuc
 [submodule "models/BQSSampler"]
 	path = models/BQSSampler
 	url = git@github.com:the-nuclear-confectionery/BQSSampler.git

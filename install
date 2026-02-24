@@ -24,9 +24,9 @@ make -j8 install
 
 cd $PREFIX
 
-wget https://pythia.org/download/pythia83/pythia8310.tgz
-tar xf pythia8310.tgz && rm pythia8310.tgz
-cd pythia8310
+wget https://pythia.org/download/pythia83/pythia8316.tgz
+tar xf pythia8316.tgz && rm pythia8316.tgz
+cd pythia8316
 ./configure --prefix=${PREFIX} --with-hepmc3=${PREFIX}/HepMC3 --cxx-common='-std=c++17 -march=native -O3 -fPIC -pthread'
 make -j8 install
 
@@ -67,8 +67,8 @@ cmake --build . --target install -j
 
 
 export EIGEN3_ROOT="${PREFIX}/eigen3"          
-export PYTHIA8DIR="${PREFIX}/pythia8310"
-export PYTHIA8_ROOT_DIR="${PREFIX}/pythia8310"
+export PYTHIA8DIR="${PREFIX}/pythia8316"
+export PYTHIA8_ROOT_DIR="${PREFIX}/pythia8316"
 export HEPMC_DIR=${PREFIX}
 
 
@@ -145,7 +145,7 @@ cd $WORKDIR
 cd models/smash
 mkdir build
 cd build
-cmake .. -DPythia_CONFIG_EXECUTABLE=$PREFIX/pythia8310/bin/pythia8-config -DCMAKE_INSTALL_PREFIX=$PREFIX
+cmake .. -DPythia_CONFIG_EXECUTABLE=$PREFIX/pythia8316/bin/pythia8-config -DCMAKE_INSTALL_PREFIX=$PREFIX
 make -j8
 make install
 
