@@ -134,7 +134,7 @@ class CCAKEHydro(Hydrodynamics):
                 'T': hydrodynamics['particlization']['T']
             },
             'hydro': {
-                                                                                                                                                                                                                                'baryon_charge_enabled':  hydrodynamics['hydro']['baryon_charge_enabled'],
+                'baryon_charge_enabled':  hydrodynamics['hydro']['baryon_charge_enabled'],                                                                                                                                                                         'baryon_charge_enabled':  hydrodynamics['hydro']['baryon_charge_enabled'],
                 'strange_charge_enabled': hydrodynamics['hydro']['strange_charge_enabled'],
                 'electric_charge_enabled': hydrodynamics['hydro']['electric_charge_enabled'],
                 'source': {
