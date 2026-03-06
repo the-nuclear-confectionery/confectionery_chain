@@ -1034,41 +1034,42 @@ properties:
                         default: constant_over_T
                         description: "Relaxation mode for diffusion."
               source:
-              type: object
-              properties:
-                type:
-                  type: string
-                  enum: [ic,jet,disabled]
-                  default: disabled
-                  description: "Type of source term in hydrodynamics."
-                model:
-                  type: string
-                  enum: [AMPT, JEWEL, SMASH, BBMG,toy_model]
-                  description: "Model used for source term."
-                smearing_radius:
-                  type: number
-                  default: 1.0
-                  description: "Smearing radius for source term in fm."
-                file_path:
-                  type: string
-                  default: ""
-                  description: "Path to the source term file."
-                normalization:
-                  type: number
-                  default: 1.0
-                  description: "Normalization factor for the source term."
-                enable_baryon:
-                  type: boolean
-                  default: false
-                  description: "Enable baryon number source term."
-                enable_electric:
-                  type: boolean
-                  default: false
-                  description: "Enable electric charge source term."
-                enable_strange:
-                  type: boolean
-                  default: false
-                  description: "Enable strange charge source term."
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum: [ic,jet,disabled]
+                    default: disabled
+                    description: "Type of source term in hydrodynamics."
+                  model:
+                    type: string
+                    enum: [AMPT, JEWEL, SMASH, BBMG,toy_model, default]
+                    default: default
+                    description: "Model used for source term."
+                  smearing_radius:
+                    type: number
+                    default: 1.0
+                    description: "Smearing radius for source term in fm."
+                  file_path:
+                    type: string
+                    default: ""
+                    description: "Path to the source term file."
+                  normalization:
+                    type: number
+                    default: 1.0
+                    description: "Normalization factor for the source term."
+                  enable_baryon:
+                    type: boolean
+                    default: false
+                    description: "Enable baryon number source term."
+                  enable_electric:
+                    type: boolean
+                    default: false
+                    description: "Enable electric charge source term."
+                  enable_strange:
+                    type: boolean
+                    default: false
+                    description: "Enable strange charge source term."
               
           output:
             type: object
