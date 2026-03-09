@@ -4,6 +4,9 @@ import os
 
 def apply_defaults(schema, config):
     """Recursively apply default values from the schema to the configuration."""
+    if config is None:
+        config = {}
+
     # Handle 'allOf' - iterate over all sub-schemas and merge defaults if conditions match
     if 'allOf' in schema:
         for subschema in schema['allOf']:

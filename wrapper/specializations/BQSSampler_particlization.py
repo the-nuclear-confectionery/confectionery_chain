@@ -150,6 +150,7 @@ class BQSSamplerParticlization(Particlization):
                 f.write(f"input_file {p['input_file']}\n")
                 f.write(f"output_file {p['output_file']}\n")
                 f.write(f"tables_path {p['tables_path']}\n")
+                f.write(f"position_smearing {p.get('position_smearing', 0.001)}\n")
 
         # Write to tmpdir (used by the run) and also save a copy to output/configs
         _write_cfg(run_cfg_file)

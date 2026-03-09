@@ -98,6 +98,16 @@ class CCAKEHydro(Hydrodynamics):
         # Get hydrodynamics section from the main configuration
         hydrodynamics = self.config['input']['hydrodynamics']
 
+        # Helpers for nested .get() access
+        params   = hydrodynamics.get('parameters', {})
+        hydro    = hydrodynamics.get('hydro', {})
+        visc     = hydro.get('viscous_parameters', {})
+        shear    = visc.get('shear', {})
+        bulk     = visc.get('bulk', {})
+        diff     = visc.get('diffusion', {})
+        source   = hydro.get('source', {})
+        output   = hydrodynamics.get('output', {})
+
         # Construct the configuration by cropping relevant sections
         temp_config = {
             'initial_conditions': {
@@ -109,17 +119,17 @@ class CCAKEHydro(Hydrodynamics):
                 'coordinate_system': hydrodynamics['initial_conditions']['coordinate_system']
             },
             'parameters': {
-                'dt': hydrodynamics['parameters']['dt'],
-                'h_T': hydrodynamics['parameters']['h_T'],
-                'h_eta': hydrodynamics['parameters']['h_eta'],
-                'rk_order': hydrodynamics['parameters']['rk_order'],
-                'kernel_type': hydrodynamics['parameters']['kernel_type'],
-                'energy_cutoff': hydrodynamics['parameters']['energy_cutoff'],
-                'max_tau': hydrodynamics['parameters']['max_tau'],
+                'dt': params['dt'],
+                'h_T': params['h_T'],
+                'h_eta': params['h_eta'],
+                'rk_order': params.get('rk_order', 2),
+                'kernel_type': params['kernel_type'],
+                'energy_cutoff': params['energy_cutoff'],
+                'max_tau': params.get('max_tau', 30.0),
                 'buffer_particles': {
-                    'enabled': hydrodynamics['parameters']['buffer_particles']['enabled'],
-                    'circular': hydrodynamics['parameters']['buffer_particles']['circular'],
-                    'padding_thickness': hydrodynamics['parameters']['buffer_particles']['padding_thickness']
+                    'enabled': params['buffer_particles']['enabled'],
+                    'circular': params['buffer_particles']['circular'],
+                    'padding_thickness': params['buffer_particles']['padding_thickness']
                 }
             },
             'eos': {
@@ -134,62 +144,62 @@ class CCAKEHydro(Hydrodynamics):
                 'T': hydrodynamics['particlization']['T']
             },
             'hydro': {
-                'baryon_charge_enabled': hydrodynamics['hydro']['baryon_charge_enabled'],                                                                                                                                                                         'baryon_charge_enabled':  hydrodynamics['hydro']['baryon_charge_enabled'],
-                'strange_charge_enabled': hydrodynamics['hydro']['strange_charge_enabled'],
-                'electric_charge_enabled': hydrodynamics['hydro']['electric_charge_enabled'],
+                'baryon_charge_enabled': hydro['baryon_charge_enabled'],
+                'strange_charge_enabled': hydro['strange_charge_enabled'],
+                'electric_charge_enabled': hydro['electric_charge_enabled'],
                 'source': {
-                   'type': hydrodynamics['hydro']['source']['type'],
-                   'model': hydrodynamics['hydro']['source']['model'],
-                   'normalization': hydrodynamics['hydro']['source']['normalization'],
-                   'smearing_radius': hydrodynamics['hydro']['source']['smearing_radius'],
-                   'file': hydrodynamics['hydro']['source']['file'],
-                   'enable_baryon': hydrodynamics['hydro']['source']['enable_baryon'],
-                   'enable_electric': hydrodynamics['hydro']['source']['enable_electric'],
-                   'enable_strange': hydrodynamics['hydro']['source']['enable_strange'],
+                   'type':            source.get('type', 'disabled'),
+                   'model':           source.get('model', 'disabled'),
+                   'normalization':   source.get('normalization', 1.0),
+                   'smearing_radius': source.get('smearing_radius', 1.4),
+                   'file':            source.get('file', 'disabled'),
+                   'enable_baryon':   source.get('enable_baryon',  False),
+                   'enable_electric': source.get('enable_electric', False),
+                   'enable_strange':  source.get('enable_strange', False),
                 },
-                               
+
                 'viscous_parameters': {
                     'shear': {
-                        'input_initial_shear':  hydrodynamics['hydro']['viscous_parameters']['shear']['input_initial_shear'],
-                        'mode':                 hydrodynamics['hydro']['viscous_parameters']['shear']['mode'],
-                        'constant_eta_over_s':  hydrodynamics['hydro']['viscous_parameters']['shear']['constant_eta_over_s'],
-                        'relaxation_mode':      hydrodynamics['hydro']['viscous_parameters']['shear']['relaxation_mode'],
-                        'use_vorticity':        hydrodynamics['hydro']['viscous_parameters']['shear']['use_vorticity'],
-                        'delta_pipi_mode':      hydrodynamics['hydro']['viscous_parameters']['shear']['delta_pipi_mode'],
-                        'tau_pipi_mode':        hydrodynamics['hydro']['viscous_parameters']['shear']['tau_pipi_mode'],
-                        'lambda_piPi_mode':     hydrodynamics['hydro']['viscous_parameters']['shear']['lambda_piPi_mode'],
-                        'phi6_mode':            hydrodynamics['hydro']['viscous_parameters']['shear']['phi6_mode'],                                                                 
-                        'phi7_mode':            hydrodynamics['hydro']['viscous_parameters']['shear']['phi7_mode'],
+                        'input_initial_shear':  shear.get('input_initial_shear', False),
+                        'mode':                 shear['mode'],
+                        'constant_eta_over_s':  shear['constant_eta_over_s'],
+                        'relaxation_mode':      shear['relaxation_mode'],
+                        'use_vorticity':        shear.get('use_vorticity', False),
+                        'delta_pipi_mode':      shear.get('delta_pipi_mode', 'default'),
+                        'tau_pipi_mode':        shear.get('tau_pipi_mode', 'disabled'),
+                        'lambda_piPi_mode':     shear.get('lambda_piPi_mode', 'disabled'),
+                        'phi6_mode':            shear.get('phi6_mode', 'disabled'),
+                        'phi7_mode':            shear.get('phi7_mode', 'disabled'),
                     },
-            
+
                     'bulk': {
-                        'bulk_from_trace':      hydrodynamics['hydro']['viscous_parameters']['bulk']['bulk_from_trace'],
-                        'mode':                 hydrodynamics['hydro']['viscous_parameters']['bulk']['mode'],
-                        'constant_zeta_over_s': hydrodynamics['hydro']['viscous_parameters']['bulk']['constant_zeta_over_s'],
-                        'cs2_dependent_zeta_A': hydrodynamics['hydro']['viscous_parameters']['bulk']['cs2_dependent_zeta_A'],
-                        'cs2_dependent_zeta_p': hydrodynamics['hydro']['viscous_parameters']['bulk']['cs2_dependent_zeta_p'],
-                        'relaxation_mode':      hydrodynamics['hydro']['viscous_parameters']['bulk']['relaxation_mode'],
-                        'modulate_with_tanh':   hydrodynamics['hydro']['viscous_parameters']['bulk']['modulate_with_tanh'],
-                        'delta_PiPi_mode':      hydrodynamics['hydro']['viscous_parameters']['bulk']['delta_PiPi_mode'],
-                        'lambda_Pipi_mode':     hydrodynamics['hydro']['viscous_parameters']['bulk']['lambda_Pipi_mode'],
-                        'phi1_mode':            hydrodynamics['hydro']['viscous_parameters']['bulk']['phi1_mode'],
-                        'phi3_mode':            hydrodynamics['hydro']['viscous_parameters']['bulk']['phi3_mode'],
+                        'bulk_from_trace':      bulk.get('bulk_from_trace', False),
+                        'mode':                 bulk['mode'],
+                        'constant_zeta_over_s': bulk['constant_zeta_over_s'],
+                        'cs2_dependent_zeta_A': bulk['cs2_dependent_zeta_A'],
+                        'cs2_dependent_zeta_p': bulk['cs2_dependent_zeta_p'],
+                        'relaxation_mode':      bulk['relaxation_mode'],
+                        'modulate_with_tanh':   bulk['modulate_with_tanh'],
+                        'delta_PiPi_mode':      bulk.get('delta_PiPi_mode', 'israel-stewart'),
+                        'lambda_Pipi_mode':     bulk.get('lambda_Pipi_mode', 'default'),
+                        'phi1_mode':            bulk.get('phi1_mode', 'disabled'),
+                        'phi3_mode':            bulk.get('phi3_mode', 'disabled'),
                     },
-            
+
                     'diffusion': {
-                        'input_initial_diffusion': hydrodynamics['hydro']['viscous_parameters']['diffusion']['input_initial_diffusion'],
-                        'mode':                    hydrodynamics['hydro']['viscous_parameters']['diffusion']['mode'],
-                        'constant_kappa_over_T2':  hydrodynamics['hydro']['viscous_parameters']['diffusion']['constant_kappa_over_T2'],
-                        'relaxation_mode':         hydrodynamics['hydro']['viscous_parameters']['diffusion']['relaxation_mode'],
+                        'input_initial_diffusion': diff.get('input_initial_diffusion', False),
+                        'mode':                    diff.get('mode', 'constant_over_T2'),
+                        'constant_kappa_over_T2':  diff.get('constant_kappa_over_T2', [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]),
+                        'relaxation_mode':         diff.get('relaxation_mode', 'constant_over_T'),
                     },
                 },
             },
             'output': {
-                'print_conservation_state': hydrodynamics['output']['print_conservation_state'],
-                'hdf_evolution': hydrodynamics['output']['hdf_evolution'],
-                'txt_evolution': hydrodynamics['output']['txt_evolution'],
-                'calculate_observables': hydrodynamics['output']['calculate_observables'],
-                'check_causality': hydrodynamics['output']['check_causality'],
+                'print_conservation_state': output['print_conservation_state'],
+                'hdf_evolution': output['hdf_evolution'],
+                'txt_evolution': output['txt_evolution'],
+                'calculate_observables': output.get('calculate_observables', False),
+                'check_causality': output.get('check_causality', True),
             }
         }
 
