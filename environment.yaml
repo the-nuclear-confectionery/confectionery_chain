@@ -21,26 +21,14 @@ dependencies:
   - doxygen
   - gsl=2.7.1
   - cmake
-  - eigen
+  - eigen=3.4.0
   - yaml-cpp
   
   # Boost (specific version)
   - boost=1.78.0
   - boost-cpp=1.78.0
   
-  # ROOT and related dependencies
-  - root
+  # ROOT (no GUI/display dependencies needed)
   - root_base
-  - libselinux-cos7-x86_64
-  - mesa-libgl-cos7-x86_64
-  - xorg-libx11
-  - libxext-cos7-x86_64
-  - libxdamage-cos7-x86_64
-  - libxfixes-cos7-x86_64
-  - libxxf86vm-cos7-x86_64
-  - libxcb-cos7-x86_64
-  - libxau-cos7-x86_64
-  - expat-cos7-x86_64
-  - mesalib
   - ca-certificates
   - openssl
