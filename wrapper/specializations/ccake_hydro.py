@@ -106,6 +106,7 @@ class CCAKEHydro(Hydrodynamics):
         bulk     = visc.get('bulk', {})
         diff     = visc.get('diffusion', {})
         source   = hydro.get('source', {})
+        jets     = hydro.get('jets', {})
         output   = hydrodynamics.get('output', {})
 
         # Construct the configuration by cropping relevant sections
@@ -156,6 +157,14 @@ class CCAKEHydro(Hydrodynamics):
                    'enable_baryon':   source.get('enable_baryon',  False),
                    'enable_electric': source.get('enable_electric', False),
                    'enable_strange':  source.get('enable_strange', False),
+                },
+
+                'jets': {
+                    'type':                     jets.get('type', 'disabled'),
+                    'Energy_scaling':           jets.get('Energy_scaling', 0),
+                    'Path_Length_scaling':      jets.get('Path_Length_scaling', 1),
+                    'Fluctuation_parameter':    jets.get('Fluctuation_parameter', 0),
+                    'Phi_bins':                 jets.get('Phi_bins', 14)
                 },
 
                 'viscous_parameters': {
