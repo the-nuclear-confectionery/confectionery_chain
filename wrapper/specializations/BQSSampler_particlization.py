@@ -129,28 +129,32 @@ class BQSSamplerParticlization(Particlization):
             p['output_file'] = os.path.join(tmpdir, "results", "particle_list.dat")
 
         # Helper to write a config to a given path
+        def _bool(v) -> str:
+            return "true" if v else "false"
+
         def _write_cfg(path: str):
             with open(path, 'w') as f:
                 f.write(f"mode {p['mode']}\n")
                 f.write(f"coordinate_system {p['coordinate_system']}\n")
                 f.write(f"dimension {p['dimension']}\n")
-                f.write(f"use_mub {bool(p['use_muB'])}\n")
-                f.write(f"use_mus {bool(p['use_muS'])}\n")
-                f.write(f"use_muq {bool(p['use_muQ'])}\n")
+                f.write(f"use_mub {_bool(p['use_muB'])}\n")
+                f.write(f"use_mus {_bool(p['use_muS'])}\n")
+                f.write(f"use_muq {_bool(p['use_muQ'])}\n")
                 f.write(f"samples {p['samples']}\n")
                 f.write(f"sampling_method {p['sampling_method']}\n")
-                f.write(f"force_temperature {bool(p['force_temperature'])}\n")
+                f.write(f"force_temperature {_bool(p['force_temperature'])}\n")
                 f.write(f"temperature {p['temperature']}\n")
-                f.write(f"delta_f_shear {bool(p['delta_f_shear'])}\n")
-                f.write(f"delta_f_diffusion {bool(p.get('delta_f_diffusion', False))}\n")
-                f.write(f"delta_f_bulk {bool(p.get('delta_f_bulk', False)) }\n")
-                f.write(f"normalize_deltaf {bool(p.get('normalize_deltaf', False))}\n")
+                f.write(f"delta_f_shear {_bool(p['delta_f_shear'])}\n")
+                f.write(f"delta_f_diffusion {_bool(p.get('delta_f_diffusion', False))}\n")
+                f.write(f"delta_f_bulk {_bool(p.get('delta_f_bulk', False))}\n")
+                f.write(f"normalize_deltaf {_bool(p.get('normalize_deltaf', False))}\n")
                 f.write(f"y_max {p['y_max']}\n")
                 f.write(f"seed {seed}\n")
                 f.write(f"input_file {p['input_file']}\n")
                 f.write(f"output_file {p['output_file']}\n")
                 f.write(f"tables_path {p['tables_path']}\n")
                 f.write(f"position_smearing {p.get('position_smearing', 0.001)}\n")
+                f.write(f"eos_column {_bool(p.get('eos_column', True))}\n")
 
         # Write to tmpdir (used by the run) and also save a copy to output/configs
         _write_cfg(run_cfg_file)

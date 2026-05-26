@@ -861,6 +861,10 @@ properties:
                 type: string
                 default: default
                 description: "Path to the pre-inverted EoS file (required if `type` is 'table')."
+              normalize_by_T:
+                type: boolean
+                default: false
+                description: "Normalize EoS table entries by T (required for some 4D/BSQ tables)."
 
           particlization:
             type: object
@@ -981,6 +985,10 @@ properties:
                         type: boolean
                         default: false
                         description: "Compute bulk pressure from trace of energy-momentum tensor."
+                      critical_scaling_bulk:
+                        type: boolean
+                        default: false
+                        description: "Enable critical-point scaling of bulk viscosity."
                       delta_PiPi_mode:
                         type: string
                         enum: [israel-stewart]
@@ -988,8 +996,8 @@ properties:
                         description: "Delta Pi-Pi mode."
                       lambda_Pipi_mode:
                         type: string
-                        enum: [disabled]
-                        default: disabled
+                        enum: [disabled, default]
+                        default: default
                         description: "Lambda Pi-Pi mode."
                       phi1_mode:
                         type: string
@@ -1033,6 +1041,28 @@ properties:
                         enum: [constant_over_T]
                         default: constant_over_T
                         description: "Relaxation mode for diffusion."
+                      critical_scaling:
+                        type: boolean
+                        default: false
+                        description: "Enable critical-point scaling of diffusion coefficients."
+                      critical_point:
+                        type: object
+                        properties:
+                          T:
+                            type: number
+                            description: "Critical-point temperature (MeV)."
+                          muB:
+                            type: number
+                            description: "Critical-point baryon chemical potential (MeV)."
+                      critical_gaussian_width:
+                        type: object
+                        properties:
+                          T:
+                            type: number
+                            description: "Gaussian width in T around the critical point (MeV)."
+                          muB:
+                            type: number
+                            description: "Gaussian width in muB around the critical point (MeV)."
               source:
                 type: object
                 properties:
@@ -1207,6 +1237,7 @@ properties:
                     output_file: { type: string, default: default }
                     tables_path: { type: string, default: default }
                     position_smearing: { type: number, default: 0.001 }
+                    eos_column: { type: boolean, default: true, description: "Read EoS type flag (col 44) from freeze-out surface file; set false for old files without this column." }
       
           # ---- analytical ----
           - if:
@@ -1298,7 +1329,7 @@ properties:
                             Format:
                               type: array
                               items: { type: string, enum: ["Oscar2013", "HepMC_treeroot"] }
-                              default: ["Oscar2013", "HepMC_treeroot"]
+                              default: ["HepMC_treeroot"]
                     Collision_Term:
                       type: object
                       properties:
