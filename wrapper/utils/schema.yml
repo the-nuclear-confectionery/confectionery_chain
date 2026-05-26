@@ -1100,6 +1100,32 @@ properties:
                     type: boolean
                     default: false
                     description: "Enable strange charge source term."
+                      
+              jets:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum: [full,source,disabled]
+                    default: disabled
+                    description: "Type of source term in hydrodynamics."
+                  Energy_scaling:
+                    type: number
+                    default: 0
+                    description: "Value of 'a' in the BBMG model."
+                  Path_Length_scaling:
+                    type: number
+                    enum: [0,1,2]  
+                    default: 1
+                    description: "Value of 'z' in the BBMG model."
+                  Fluctuation_parameter:
+                    type: number
+                    default: 0
+                    description: "Value of 'q' in the BBMG model."
+                  Phi_bins:
+                    type: number
+                    default: 7
+                    description: "Number of phi directions to initialize jets"
               
           output:
             type: object
