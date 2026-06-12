@@ -851,7 +851,7 @@ properties:
                 description: "Equation of state (EoS) type."
               path:
                 type: string
-                default: default
+                default: models/CCAKE/EoS/Houston
                 description: "Path to the EoS file (required if `type` is 'table')."
               online_inverter_enabled:
                 type: boolean
@@ -902,13 +902,13 @@ properties:
                     properties:
                       mode:
                         type: string
-                        enum: [constant, disabled]
+                        enum: [constant, disabled, interpolate]
                         default: constant
-                        description: "Shear viscosity mode."
+                        description: "Shear viscosity mode (reads eta/s from EOS table)."
                       constant_eta_over_s:
                         type: number
                         default: 0.12
-                        description: "Constant shear viscosity value."
+                        description: "Constant shear viscosity value (placeholder)."
                       relaxation_mode:
                         type: string
                         enum: [default, gubser]
@@ -1158,6 +1158,7 @@ properties:
                       enum: [regular, conserved]
                       default: regular
                     delta_f_shear: { type: boolean, default: false }
+                    normalize_deltaf: { type: boolean, default: false }
                     seed:
                       anyOf: [{ type: string }, { type: integer }]
                       default: "random"

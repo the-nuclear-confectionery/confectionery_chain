@@ -74,7 +74,14 @@ class CCAKEHydro(Hydrodynamics):
 
         #check eos path
         if self.config['input']['hydrodynamics']['eos']['path'] == 'default':
-            self.config['input']['hydrodynamics']['eos']['path'] = os.path.join(self.config['global']['basedir'], 'tables')
+            self.config['input']['hydrodynamics']['eos']['path'] = os.path.join(
+                self.config['global']['basedir'], 'models', 'CCAKE', 'EoS', 'Houston'
+            )
+        elif not os.path.isabs(self.config['input']['hydrodynamics']['eos']['path']):
+            self.config['input']['hydrodynamics']['eos']['path'] = os.path.join(
+                self.config['global']['basedir'],
+                self.config['input']['hydrodynamics']['eos']['path']
+            )
 
         print("Base validation for CCAKE completed.")
 
@@ -142,7 +149,7 @@ class CCAKEHydro(Hydrodynamics):
                     'shear': {
                         'input_initial_shear':  hydrodynamics['hydro']['viscous_parameters']['shear']['input_initial_shear'],
                         'mode':                 hydrodynamics['hydro']['viscous_parameters']['shear']['mode'],
-                        'constant_eta_over_s':  hydrodynamics['hydro']['viscous_parameters']['shear']['constant_eta_over_s'],
+                        'constant_eta_over_s':  hydrodynamics['hydro']['viscous_parameters']['shear'].get('constant_eta_over_s', 0.12),
                         'relaxation_mode':      hydrodynamics['hydro']['viscous_parameters']['shear']['relaxation_mode'],
                         'use_vorticity':        hydrodynamics['hydro']['viscous_parameters']['shear']['use_vorticity'],
                         'delta_pipi_mode':      hydrodynamics['hydro']['viscous_parameters']['shear']['delta_pipi_mode'],

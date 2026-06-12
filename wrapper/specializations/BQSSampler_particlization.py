@@ -140,6 +140,7 @@ class BQSSamplerParticlization(Particlization):
                 f.write(f"samples {p['samples']}\n")
                 f.write(f"sampling_method {p['sampling_method']}\n")
                 f.write(f"delta_f_shear {bool(p['delta_f_shear'])}\n")
+                f.write(f"normalize_deltaf {bool(p.get('normalize_deltaf', False))}\n")
                 f.write(f"y_max {p['y_max']}\n")
                 f.write(f"seed {seed}\n")
                 f.write(f"input_file {p['input_file']}\n")
