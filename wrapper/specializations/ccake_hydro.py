@@ -1,5 +1,6 @@
 import warnings
 import os
+import shutil
 import subprocess
 import re
 import pandas as pd
@@ -237,9 +238,20 @@ class CCAKEHydro(Hydrodynamics):
                 os.path.join(self.config['global']['output'], f'event_{event_id}', 'configs', 'ccake.yaml'), 
                 output_dir], check=True)
 
+        # persist the freeze-out surface to the top-level output dir so it
+        # survives end-of-run cleanup. Controlled by the per-stage
+        # 'keep_result' flag.
+        keep_result = self.config['input']['hydrodynamics'].get('parameters', {}).get('keep_result', False)
+        if keep_result:
+            freeze_out_src = os.path.join(output_dir, "freeze_out.dat")
+            if os.path.exists(freeze_out_src):
+                dest = os.path.join(self.config['global']['output'], f"freeze_out_{event_id}.dat")
+                shutil.copy2(freeze_out_src, dest)
+                print(f"Persisted freeze-out surface to {dest}")
+
         #insert into db
-        insert_hydro(self.db_connection, 
-                     event_id=event_id, 
+        insert_hydro(self.db_connection,
+                     event_id=event_id,
                      initial_time=self.config['global']['tau_hydro'],
                      freeze_out_temperature=self.config['input']['hydrodynamics']['particlization']['T'],
                      dimensions= self.config['input']['hydrodynamics']['initial_conditions']['dimension'],

@@ -1,11 +1,132 @@
 import warnings
 import os
+import shutil
 import subprocess
 import re
 import pandas as pd
 import random
+import numpy as np
 from utils.db import insert_initial_condition
 from stages.initial_condition import InitialCondition
+
+
+# ---------------------------------------------------------------------------
+# Standalone sparse-file utilities (importable without the wrapper class)
+# ---------------------------------------------------------------------------
+
+def read_sparse_trento_file(path: str) -> dict:
+    """Read a sparse TRENTo output file (ic*.dat, TA*.dat, or TB*.dat).
+
+    Header format (line 1):
+        event_num  dxy  mult  xmin  ymin
+
+    Data lines:
+        x  y  value   (only non-zero cells are listed)
+
+    Returns a dict with keys:
+        dxy, mult, xmin, ymin, n_steps, grid (2-D numpy array, shape [n_steps, n_steps])
+
+    The grid is indexed as grid[ix, iy] where:
+        x = xmin + ix * dxy
+        y = ymin + iy * dxy
+    """
+    with open(path, 'r') as f:
+        lines = f.readlines()
+
+    if not lines:
+        raise RuntimeError(f"Empty file: {path}")
+
+    # Parse header
+    header = lines[0].split()
+    dxy  = float(header[1])
+    mult = float(header[2])
+    xmin = float(header[3])
+    ymin = float(header[4])
+
+    # Grid runs from xmin to -xmin (symmetric), step dxy
+    # n_steps = round(2*|xmin| / dxy) + 1, matching Trento's write_sparse_file
+    xmax   = -xmin
+    n_steps = int(round(2.0 * xmax / dxy)) + 1
+
+    grid = np.zeros((n_steps, n_steps), dtype=np.float64)
+
+    for line in lines[1:]:
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split()
+        x, y, val = float(parts[0]), float(parts[1]), float(parts[2])
+        ix = int(round((x - xmin) / dxy))
+        iy = int(round((y - ymin) / dxy))
+        if 0 <= ix < n_steps and 0 <= iy < n_steps:
+            grid[ix, iy] = val
+
+    return {
+        'dxy':    dxy,
+        'mult':   mult,
+        'xmin':   xmin,
+        'ymin':   ymin,
+        'n_steps': n_steps,
+        'grid':   grid,
+    }
+
+
+def read_ncoll_list_file(ncoll_list_path: str) -> np.ndarray:
+    """Read the binary-collision position list file ``ncoll_list{n}.dat`` written
+    by the TRENTo C++ binary (requires ``ncoll = true``).
+
+    Each line contains the transverse midpoint ``x y`` of one binary collision
+    (average of the two participant nucleon positions).
+
+    Parameters
+    ----------
+    ncoll_list_path : str
+        Path to the ncoll_list{n}.dat file.
+
+    Returns
+    -------
+    numpy array of shape (Ncoll, 2), columns [x, y] in fm.
+    Returns an empty (0, 2) array if no collisions are found.
+    """
+    points = []
+    with open(ncoll_list_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split()
+            if len(parts) >= 2:
+                points.append((float(parts[0]), float(parts[1])))
+    return np.array(points, dtype=np.float64).reshape(-1, 2)
+
+
+def save_sparse_trento_file(path: str, grid_dict: dict, event_num: int = 0,
+                             threshold: float = 0.0) -> None:
+    """Write a dense numpy grid to TRENTo sparse format.
+
+    Parameters
+    ----------
+    path       : output file path
+    grid_dict  : dict as returned by ``read_sparse_trento_file`` or ``compute_ncoll_grid``
+    event_num  : event number written in the header (default 0)
+    threshold  : cells with value <= threshold are skipped (default 0)
+    """
+    dxy    = grid_dict['dxy']
+    xmin   = grid_dict['xmin']
+    ymin   = grid_dict['ymin']
+    grid   = grid_dict['grid']
+    mult   = float(grid.sum() * dxy * dxy)  # proxy multiplicity
+
+    with open(path, 'w') as f:
+        f.write(f"{event_num} {dxy} {mult} {xmin} {ymin}\n")
+        n = grid.shape[0]
+        for ix in range(n):
+            x = xmin + ix * dxy
+            for iy in range(n):
+                val = grid[ix, iy]
+                if val > threshold:
+                    y = ymin + iy * dxy
+                    f.write(f"{x} {y} {val}\n")
 
 class TrentoInitialCondition(InitialCondition):
     def validate(self):
@@ -148,10 +269,28 @@ class TrentoInitialCondition(InitialCondition):
             if self.config['input']['initial_conditions']['parameters']['sparse-output'] == True:
                 sparse_output = True
                 trento_ic_path = os.path.join(self.config['global']['output'], "event_" + str(event_id), 'trento', f'ic0.dat')
-                
+
             else:
                 trento_ic_path = os.path.join(self.config['global']['output'], "event_" + str(event_id), 'trento', f'0.dat')
             self.convert_to_ccake( trento_ic_path,ccake_ic_path, sparse_output)
+
+        # When ncoll = true, TRENTo writes ncoll_list{n}.dat with the (x,y)
+        # midpoints of each binary collision.  Log the count as a sanity check.
+        ncoll_enabled = self.config['input']['initial_conditions']['parameters'].get('ncoll', False)
+        if ncoll_enabled:
+            try:
+                self.read_ncoll_list(event_id, event_num=0)
+            except FileNotFoundError as exc:
+                print(f"[ncoll] Warning: {exc}")
+
+        # persist the CCAKE-format initial condition to the top-level output dir
+        # so it survives end-of-run cleanup. Controlled by the per-stage
+        # 'keep_result' flag.
+        keep_result = self.config['input']['initial_conditions']['parameters'].get('keep_result', False)
+        if keep_result and os.path.exists(ccake_ic_path):
+            dest = os.path.join(self.config['global']['output'], f"ccake_ic_{event_id}.dat")
+            shutil.copy2(ccake_ic_path, dest)
+            print(f"Persisted initial condition to {dest}")
 
     def parse_output(self, output_file):
         """Parse the output file to extract entropy and eccentricity information."""
@@ -198,6 +337,40 @@ class TrentoInitialCondition(InitialCondition):
 
         return events_data
     
+
+    # ------------------------------------------------------------------
+    # Binary-collision density helpers
+    # ------------------------------------------------------------------
+
+    def read_ncoll_list(self, event_id: int, event_num: int = 0) -> np.ndarray:
+        """Read the binary-collision position list from ``ncoll_list{event_num}.dat``.
+
+        TRENTo writes this file when ``ncoll = true``.  Each line is the
+        transverse midpoint (x, y) of one colliding nucleon pair.
+
+        Parameters
+        ----------
+        event_id  : pipeline event identifier (used to locate the output directory)
+        event_num : TRENTo event index within that run (default 0 for single-event runs)
+
+        Returns
+        -------
+        numpy array of shape (Ncoll, 2), columns [x, y] in fm.
+        """
+        trento_dir = os.path.join(
+            self.config['global']['output'], f"event_{event_id}", 'trento'
+        )
+        ncoll_path = os.path.join(trento_dir, f'ncoll_list{event_num}.dat')
+
+        if not os.path.isfile(ncoll_path):
+            raise FileNotFoundError(
+                f"ncoll_list{event_num}.dat not found at {ncoll_path}. "
+                "Make sure ncoll = true in the TRENTo config."
+            )
+
+        positions = read_ncoll_list_file(ncoll_path)
+        print(f"[ncoll] event {event_id} (TRENTo #{event_num}): Ncoll = {len(positions)}")
+        return positions
 
     def convert_to_ccake(self, input_file, output_file, sparse_output):
         """Convert the TRENTo output to CCAKE input format."""

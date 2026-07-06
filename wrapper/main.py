@@ -79,125 +79,132 @@ def main():
     print(f"Afterburner: {afterburner_type}")
     print(f"Analysis: {analysis_type}")
 
-    if ic_type == 'trento':
-        initial_condition = TrentoInitialCondition(config, db_connection)
-    elif ic_type == 'ampt':
-        initial_condition = AmptInitialCondition(config, db_connection)
-    elif ic_type == 'none':
-        initial_condition = NoneInitialCondition(config, db_connection)
-        config['input']['initial_conditions']['type'] = None
-    else:
-        raise ValueError(f"Unknown initial condition type: {ic_type}")
+    try:
+        if ic_type == 'trento':
+            initial_condition = TrentoInitialCondition(config, db_connection)
+        elif ic_type == 'ampt':
+            initial_condition = AmptInitialCondition(config, db_connection)
+        elif ic_type == 'none':
+            initial_condition = NoneInitialCondition(config, db_connection)
+            config['input']['initial_conditions']['type'] = None
+        else:
+            raise ValueError(f"Unknown initial condition type: {ic_type}")
 
-    initial_condition.validate()
-    initial_condition.run(args.event_id)
-    update_ic_type(db_connection, args.event_id, ic_type)
-    centrality_estimator = initial_condition.get_centrality_estimator()
-    update_event_centrality_estimator(db_connection, args.event_id, centrality_estimator)
-    # Detect overlay automatically
-
-
-    if overlay_type == 'iccing':
-        overlay_stage = ICCINGOverlay(config, db_connection)
-    elif overlay_type == 'amptgenesis':
-        overlay_stage = AmptGenesisOverlay(config, db_connection)
-    elif overlay_type == 'none':
-        overlay_stage = NoneOverlay(config, db_connection)
-        config['input']['overlay']['type'] = None
-    else:
-        raise ValueError(f"Unknown overlay type: {overlay_type}")
-
-    # Run overlay stage if applicable
-    overlay_stage.validate(args.event_id)
-    overlay_stage.run(args.event_id)
-    update_overlay_type(db_connection, args.event_id, overlay_type)
+        initial_condition.validate()
+        initial_condition.run(args.event_id)
+        update_ic_type(db_connection, args.event_id, ic_type)
+        centrality_estimator = initial_condition.get_centrality_estimator()
+        update_event_centrality_estimator(db_connection, args.event_id, centrality_estimator)
+        # Detect overlay automatically
 
 
-    if preequilibrium_type == 'freestreaming':
-        preequilibrium_stage = Freestreaming(config, db_connection)
-    elif preequilibrium_type == 'none':
-        preequilibrium_stage = NonePreequilibrium(config, db_connection)
-        config['input']['preequilibrium']['type'] = None
-    else:
-        raise ValueError(f"Unknown preequilibrium type: {preequilibrium_type}")
-    preequilibrium_stage.validate(args.event_id)
-    preequilibrium_stage.run(args.event_id)
-    update_preequilibrium_type(db_connection, args.event_id, preequilibrium_type)
+        if overlay_type == 'iccing':
+            overlay_stage = ICCINGOverlay(config, db_connection)
+        elif overlay_type == 'amptgenesis':
+            overlay_stage = AmptGenesisOverlay(config, db_connection)
+        elif overlay_type == 'none':
+            overlay_stage = NoneOverlay(config, db_connection)
+            config['input']['overlay']['type'] = None
+        else:
+            raise ValueError(f"Unknown overlay type: {overlay_type}")
+
+        # Run overlay stage if applicable
+        overlay_stage.validate(args.event_id)
+        overlay_stage.run(args.event_id)
+        update_overlay_type(db_connection, args.event_id, overlay_type)
 
 
-    if hydro_type == 'ccake':
-        hydro_stage = CCAKEHydro(config, db_connection)
-    #elif hydro_type == 'music':
-    #    hydro_stage = MusicHydro(config, db_connection)
-    elif hydro_type == 'none':
-        hydro_stage = NoneHydro(config, db_connection)
-        config['input']['hydrodynamics']['type'] = None
-    else:
-        raise ValueError(f"Unknown hydro type: {hydro_type}")
-        
-
-    hydro_stage.validate(args.event_id)
-    hydro_stage.run(args.event_id)
-    update_hydro_type(db_connection, args.event_id, hydro_type)
-    # Update centrality_estimator in the database
-
-    if particlization_type == 'is3d':
-        particlization_stage = iS3DParticlization(config, db_connection)
-    elif particlization_type == 'bqssampler':
-        particlization_stage = BQSSamplerParticlization(config, db_connection)
-    elif particlization_type == 'analytical':
-        particlization_stage = AnalyticalParticlization(config, db_connection)
-    elif particlization_type == 'none':
-        particlization_stage = NoneParticlization(config, db_connection)
-        config['input']['particlization']['type'] = None
-    else:
-        raise ValueError(f"Unknown particlization type: {particlization_type}")
-    
-
-    particlization_stage.validate(args.event_id)
-    particlization_stage.run(args.event_id)
-
-    update_particlization_type(db_connection, args.event_id, particlization_type)
+        if preequilibrium_type == 'freestreaming':
+            preequilibrium_stage = Freestreaming(config, db_connection)
+        elif preequilibrium_type == 'none':
+            preequilibrium_stage = NonePreequilibrium(config, db_connection)
+            config['input']['preequilibrium']['type'] = None
+        else:
+            raise ValueError(f"Unknown preequilibrium type: {preequilibrium_type}")
+        preequilibrium_stage.validate(args.event_id)
+        preequilibrium_stage.run(args.event_id)
+        update_preequilibrium_type(db_connection, args.event_id, preequilibrium_type)
 
 
+        if hydro_type == 'ccake':
+            hydro_stage = CCAKEHydro(config, db_connection)
+        #elif hydro_type == 'music':
+        #    hydro_stage = MusicHydro(config, db_connection)
+        elif hydro_type == 'none':
+            hydro_stage = NoneHydro(config, db_connection)
+            config['input']['hydrodynamics']['type'] = None
+        else:
+            raise ValueError(f"Unknown hydro type: {hydro_type}")
 
-    if afterburner_type == 'none':
-        afterburner_stage = NoneAfterburner(config, db_connection)
-        config['input']['afterburner']['type'] = None
-    elif afterburner_type == 'smash':
-        afterburner_stage = SMASHAfterburner(config, db_connection)
-    elif afterburner_type == 'afterdecays':
-        afterburner_stage = AfterdecaysAfterburner(config, db_connection)
-    else:
-        raise ValueError(f"Unknown afterburner type: {afterburner_type}")
-    
-    afterburner_stage.validate(args.event_id)
-    afterburner_stage.run(args.event_id)
 
-    update_afterburner_type(db_connection, args.event_id, afterburner_type)
+        hydro_stage.validate(args.event_id)
+        hydro_stage.run(args.event_id)
+        update_hydro_type(db_connection, args.event_id, hydro_type)
+        # Update centrality_estimator in the database
+
+        if particlization_type == 'is3d':
+            particlization_stage = iS3DParticlization(config, db_connection)
+        elif particlization_type == 'bqssampler':
+            particlization_stage = BQSSamplerParticlization(config, db_connection)
+        elif particlization_type == 'analytical':
+            particlization_stage = AnalyticalParticlization(config, db_connection)
+        elif particlization_type == 'none':
+            particlization_stage = NoneParticlization(config, db_connection)
+            config['input']['particlization']['type'] = None
+        else:
+            raise ValueError(f"Unknown particlization type: {particlization_type}")
+
+
+        particlization_stage.validate(args.event_id)
+        particlization_stage.run(args.event_id)
+
+        update_particlization_type(db_connection, args.event_id, particlization_type)
 
 
 
-    if analysis_type == 'none':
-        analysis_stage = NoneAnalysis(config, db_connection)
-        config['input']['analysis']['type'] = None
-    elif analysis_type == 'qvector_writter':
-        analysis_stage = QVectorWritterAnalysis(config, db_connection)
+        if afterburner_type == 'none':
+            afterburner_stage = NoneAfterburner(config, db_connection)
+            config['input']['afterburner']['type'] = None
+        elif afterburner_type == 'smash':
+            afterburner_stage = SMASHAfterburner(config, db_connection)
+        elif afterburner_type == 'afterdecays':
+            afterburner_stage = AfterdecaysAfterburner(config, db_connection)
+        else:
+            raise ValueError(f"Unknown afterburner type: {afterburner_type}")
 
-    else:
-        raise ValueError(f"Unknown analysis type: {analysis_type}")
+        afterburner_stage.validate(args.event_id)
+        afterburner_stage.run(args.event_id)
+
+        update_afterburner_type(db_connection, args.event_id, afterburner_type)
 
 
-    analysis_stage.validate(args.event_id)
-    analysis_stage.run(args.event_id)
 
-    update_analysis_type(db_connection, args.event_id, analysis_type)
+        if analysis_type == 'none':
+            analysis_stage = NoneAnalysis(config, db_connection)
+            config['input']['analysis']['type'] = None
+        elif analysis_type == 'qvector_writter':
+            analysis_stage = QVectorWritterAnalysis(config, db_connection)
 
-    #remove tmp
-    shutil.rmtree(os.path.join(config['global']['tmp'], f"event_{args.event_id}"))
+        else:
+            raise ValueError(f"Unknown analysis type: {analysis_type}")
 
-    print("Cleaning up temporary files.")
-    print("All stages completed successfully, results stored in " + config['global']['output'] + "/event_" + str(args.event_id) + ". Metadata stored in " + args.db_path)
+
+        analysis_stage.validate(args.event_id)
+        analysis_stage.run(args.event_id)
+
+        update_analysis_type(db_connection, args.event_id, analysis_type)
+
+        print("All stages completed successfully, results stored in " + config['global']['output'] + "/event_" + str(args.event_id) + ". Metadata stored in " + args.db_path)
+
+    finally:
+        #remove tmp dir regardless of success or failure; keep the output event
+        #dir so the produced files (IC, overlay, etc.) are preserved
+        for cleanup_dir in [
+            os.path.join(config['global']['tmp'], f"event_{args.event_id}"),
+        ]:
+            if os.path.exists(cleanup_dir):
+                shutil.rmtree(cleanup_dir)
+        print("Cleaning up temporary files.")
 
 if __name__ == "__main__":
     main()

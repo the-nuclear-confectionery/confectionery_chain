@@ -110,6 +110,16 @@ class BQSSamplerParticlization(Particlization):
             dirs_exist_ok=True
         )
 
+        # persist particle_list.dat at the top-level output dir so it survives
+        # end-of-run cleanup. Controlled by the per-stage 'keep_result' flag.
+        keep_result = self.config['input']['particlization']['parameters'].get('keep_result', False)
+        if keep_result:
+            particle_list_src = os.path.join(output_dir, "particle_list.dat")
+            if os.path.exists(particle_list_src):
+                dest = os.path.join(self.config['global']['output'], f"particle_list_{event_id}.dat")
+                shutil.copy2(particle_list_src, dest)
+                print(f"Persisted particle list to {dest}")
+
     def create_temp_config(self, seed: int, event_id: int, tmpdir: str) -> str:
         """
         Write the run-time config into tmpdir and also persist a copy under

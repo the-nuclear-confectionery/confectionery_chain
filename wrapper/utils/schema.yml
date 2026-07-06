@@ -110,40 +110,24 @@ properties:
                   type: object
                   additionalProperties: false
                   properties:
+                    keep_result:
+                      type: boolean
+                      default: false
+                      description: "If true, persist the CCAKE-format initial condition (ccake_ic.dat) to the top-level output dir so it survives end-of-run cleanup."
                     ion_A:
                       type: object
                       additionalProperties: false
                       properties:
                         species:
                           type: string
-                          enum:
-                            - p
-                            - d
-                            - Cu
-                            - Zr
-                            - Ru
-                            - Xe
-                            - Au
-                            - Pb
-                            - U
-                          description: "Species of the first ion (e.g., Pb, Au)."
+                          description: "Species of the first ion. Either a built-in TRENTo species (p, d, Cu, Zr, Ru, Xe, Au, Pb, U) or a path to an HDF5 nuclear-configuration file (e.g. /projects/bbkr/kpala/nuclear_configs/O_config.hdf) read via TRENTo's ManualNucleus."
                     ion_B:
                       type: object
                       additionalProperties: false
                       properties:
                         species:
                           type: string
-                          enum:
-                            - p
-                            - d
-                            - Cu
-                            - Zr
-                            - Ru
-                            - Xe
-                            - Au
-                            - Pb
-                            - U
-                          description: "Species of the second ion (e.g., Pb, Au)."
+                          description: "Species of the second ion. Either a built-in TRENTo species (p, d, Cu, Zr, Ru, Xe, Au, Pb, U) or a path to an HDF5 nuclear-configuration file (e.g. /projects/bbkr/kpala/nuclear_configs/Ne_config.hdf) read via TRENTo's ManualNucleus."
                     fluctuation:
                       type: number
                       default: 1.6
@@ -793,6 +777,10 @@ properties:
               - energy_cutoff
             additionalProperties: false
             properties:
+              keep_result:
+                type: boolean
+                default: false
+                description: "If true, persist the freeze-out surface (freeze_out.dat) to the top-level output dir so it survives end-of-run cleanup."
               dt:
                 type: number
                 default: 0.05
@@ -1168,6 +1156,10 @@ properties:
                   type: object
                   additionalProperties: false
                   properties:
+                    keep_result:
+                      type: boolean
+                      default: false
+                      description: "If true, persist the sampled particle list (particle_list_osc.dat) to the top-level output dir so it survives end-of-run cleanup."
                     input_file:
                       type: string
                       default: default
@@ -1226,6 +1218,10 @@ properties:
                   type: object
                   additionalProperties: false
                   properties:
+                    keep_result:
+                      type: boolean
+                      default: false
+                      description: "If true, persist the sampled particle list (particle_list.dat) to the top-level output dir so it survives end-of-run cleanup."
                     input_file:
                       type: string
                       default: default
@@ -1322,6 +1318,10 @@ properties:
                       type: boolean
                       default: false
                       description: "If true, only decays are performed without rescattering."
+                    keep_result:
+                      type: boolean
+                      default: false
+                      description: "If true, persist the final post-SMASH particle list (SMASH_HepMC_particles.root) to the top-level output dir so it survives end-of-run cleanup."
                     input_file:
                       type: string
                       default: default
@@ -1339,8 +1339,8 @@ properties:
                       properties:
                         Modus:          { type: string, enum: [List],  default: List }
                         Time_Step_Mode: { type: string, enum: [Fixed], default: Fixed }
-                        Delta_Time:     { type: number, default: 5.0 }
-                        End_Time:       { type: number, default: 5000.0 }
+                        Delta_Time:     { type: number, default: 10.0 }
+                        End_Time:       { type: number, default: 1000.0 }
                         seed:
                           anyOf: [{ type: string }, { type: integer }]
                           default: random
@@ -1380,6 +1380,10 @@ properties:
                   type: object
                   additionalProperties: false
                   properties:
+                    keep_result:
+                      type: boolean
+                      default: false
+                      description: "If true, persist the decayed spectra output (output.dat) to the top-level output dir so it survives end-of-run cleanup."
                     path_to_pT_range:
                       type: string
                       default: default

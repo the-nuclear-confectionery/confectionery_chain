@@ -100,6 +100,16 @@ class iS3DParticlization(Particlization):
         #copy the output to the global output directory
         shutil.copytree(output_dir, os.path.join(self.config['global']['output'], f"event_{event_id}", "iS3D"), dirs_exist_ok=True)
 
+        # persist the particle list to the top-level output dir so it survives
+        # end-of-run cleanup. Controlled by the per-stage 'keep_result' flag.
+        keep_result = self.config['input']['particlization']['parameters'].get('keep_result', False)
+        if keep_result:
+            particle_list_src = os.path.join(output_dir, "particle_list_osc.dat")
+            if os.path.exists(particle_list_src):
+                dest = os.path.join(self.config['global']['output'], f"particle_list_osc_{event_id}.dat")
+                shutil.copy2(particle_list_src, dest)
+                print(f"Persisted particle list to {dest}")
+
 
 
 

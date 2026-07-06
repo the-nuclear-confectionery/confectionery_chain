@@ -120,6 +120,17 @@ class AfterdecaysAfterburner(Afterburner):
         print(f"Running afterdecays with: {exe_tmp} -i {cfg_tmp_path}")
         subprocess.run([exe_tmp, "-i", cfg_tmp_path], cwd=tmpdir, check=True)
 
+        # persist the decayed spectra output to the top-level output dir so it
+        # survives end-of-run cleanup. Controlled by the per-stage
+        # 'keep_result' flag.
+        keep_result = self.config['input']['afterburner']['parameters'].get('keep_result', False)
+        if keep_result:
+            output_src = self.config['input']['afterburner']['parameters']['path_to_output']
+            if os.path.exists(output_src):
+                dest = os.path.join(self.config['global']['output'], f"afterdecays_output_{event_id}.dat")
+                shutil.copy2(output_src, dest)
+                print(f"Persisted afterdecays output to {dest}")
+
         # Insert DB record (no RNG seed; use -1)
         insert_afterburner(
             self.db_connection,

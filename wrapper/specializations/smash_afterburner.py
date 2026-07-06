@@ -1,5 +1,6 @@
 import os
 import random
+import shutil
 from stages.afterburner import Afterburner
 from utils.db import insert_afterburner
 import subprocess
@@ -139,6 +140,18 @@ class SMASHAfterburner(Afterburner):
         os.system(f"rm -rf {output_basedir}/tabulations")
         #remove copied config file from output dir
         os.system(f"rm -rf {output_dir}/config.yaml")
+
+        # persist the FINAL post-SMASH particle list (HepMC tree root) to the top-level
+        # output dir so it survives end-of-run cleanup. This is the post-decay hadron
+        # list -> enables exact (un-truncated) hadron-jet correlations without q-vectors.
+        # Controlled by the per-stage 'keep_result' flag.
+        keep_result = self.config['input']['afterburner']['parameters'].get('keep_result', False)
+        if keep_result:
+            smash_root = os.path.join(output_dir, "SMASH_HepMC_particles.root")
+            if os.path.exists(smash_root):
+                dest = os.path.join(self.config['global']['output'], f"smash_particles_{event_id}.root")
+                shutil.copy2(smash_root, dest)
+                print(f"Persisted final SMASH particle list to {dest}")
 
         #insert into db
         insert_afterburner(

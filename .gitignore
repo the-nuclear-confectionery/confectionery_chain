@@ -11,3 +11,19 @@ models/AMPT
 models/decays/*.o
 wrapper/external_packages
 .vscode
+
+# Editor / tooling
+.claude/
+.ipynb_checkpoints/
+
+# Build artifacts
+*.o
+
+# Run outputs (per-run scratch, not versioned)
+db_*/
+logs/
+log*.dat
+
+# Per-run generated configs and event lists
+tmp_*.yaml
+*_event_list.txt
