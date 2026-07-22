@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 from stages.overlay import Overlay
 from utils.db import insert_overlay
@@ -10,31 +11,35 @@ class AmptGenesisOverlay(Overlay):
         self.config = config
         self.db_connection = db_connection
     def validate(self, event_id):
-        
+
         # Check if it is 3D by step eta
         if self.config['global']['grid']['step_eta'] == 0:
             raise ValueError("step_eta must be different from 0 for AMPTGenesis")
-        
-        #check if initial condition is AMPT
-        if self.config['input']['initial_conditions']['type'] == "none":
-            #check if input path is default
-            if self.config['input']['overlay']['parameters']['paths']['input'] == "default":
+
+        # Initial condition must be AMPT, or none with an explicit input path.
+        # main.py normalizes disabled stages to None, but validate() runs on the
+        # raw string for stages later in the chain, so accept both spellings.
+        ic_type = (self.config['input'].get('initial_conditions', {}) or {}).get('type')
+        if isinstance(ic_type, str):
+            ic_type = ic_type.lower()
+        paths = self.config['input']['overlay']['parameters']['paths']
+        if ic_type in (None, 'none'):
+            if paths['input'] == "default":
                 raise ValueError("input path must be set for AMPTGenesis when initial condition is none")
-        else:
-            if self.config['input']['initial_conditions']['type'] != "ampt":
-                raise ValueError("Initial condition must be AMPT for AMPTGenesis or none")
-            else:
-                #check if input path is default
-                if self.config['input']['overlay']['parameters']['paths']['input'] == "default":
-                    path = os.path.join(self.config['global']['output'], f"event_{event_id}", 'ampt')
-                    self.config['input']['overlay']['parameters']['paths']['input'] = path
-        
+        elif ic_type != "ampt":
+            raise ValueError("Initial condition must be AMPT for AMPTGenesis or none")
+        elif paths['input'] == "default":
+            paths['input'] = os.path.join(self.config['global']['output'], f"event_{event_id}", 'ampt')
+
         #set default output path
-        if self.config['input']['overlay']['parameters']['paths']['output'] == "default":
-            self.config['input']['overlay']['parameters']['paths']['output'] = os.path.join(self.config['global']['output'], f"event_{event_id}", 'amptgenesis','amptgenesis.dat')
-            
-        if self.config['input']['preequilibrium']['type'] != None:
-                        raise ValueError("Preequilibrium type must be 'none' when using AMPTGenesis overlay.")
+        if paths['output'] == "default":
+            paths['output'] = os.path.join(self.config['global']['output'], f"event_{event_id}", 'amptgenesis','amptgenesis.dat')
+
+        pre_type = (self.config['input'].get('preequilibrium', {}) or {}).get('type')
+        if isinstance(pre_type, str):
+            pre_type = pre_type.lower()
+        if pre_type not in (None, 'none'):
+            raise ValueError("Preequilibrium type must be 'none' when using AMPTGenesis overlay.")
     def create_amptgenesis_config(self, event_id):
         """
         Create an AMPTGenesis configuration file using YAML-provided parameters.
@@ -49,10 +54,13 @@ class AmptGenesisOverlay(Overlay):
         config_file_path = os.path.join(output_dir, 'amptgenesis.cfg')
         with open(config_file_path, 'w') as f:
             # Section [npoints]
-            #calculate npoints from global maximum and step (division +1)
-            npoints_x = int(2.*(int(self.config['global']['grid']['x_max'] / self.config['global']['grid']['step_x']) + 1 ))
-            npoints_y = int(2.*(int(self.config['global']['grid']['y_max'] / self.config['global']['grid']['step_y']) + 1 ))
-            npoints_eta =int(2.*(int(self.config['global']['grid']['eta_max'] / self.config['global']['grid']['step_eta']) + 1))
+            # Odd count = 2*N+1 so a grid point sits exactly at center (x=0),
+            # matching the reference AMPTGenesis configs (e.g. 121 for x_max=12,
+            # step=0.2). An even count would straddle the origin.
+            grid = self.config['global']['grid']
+            npoints_x = 2 * int(grid['x_max'] / grid['step_x']) + 1
+            npoints_y = 2 * int(grid['y_max'] / grid['step_y']) + 1
+            npoints_eta = 2 * int(grid['eta_max'] / grid['step_eta']) + 1
 
             #calculate size_side from global maximum 
             size_side_x = self.config['global']['grid']['x_max']*2.
@@ -75,11 +83,50 @@ class AmptGenesisOverlay(Overlay):
             f.write(f"output = {params['paths']['output']}\n\n")
 
             # Section [smearing]
+            smearing = params['smearing']
             f.write("[smearing]\n")
-            f.write(f"sigma_r = {params['smearing']['sigma_r']}\n")
-            f.write(f"sigma_eta = {params['smearing']['sigma_eta']}\n")
-            f.write(f"K = {params['smearing']['K']}\n")
+            f.write(f"sigma_r = {smearing['sigma_r']}\n")
+            f.write(f"sigma_eta = {smearing['sigma_eta']}\n")
+            f.write(f"K = {smearing['K']}\n")
             f.write(f"tau0 = {self.config['global']['tau_hydro']}\n")
+            f.write(f"backpropagate = {str(smearing.get('backpropagate', False)).lower()}\n\n")
+
+            # The remaining sections were previously omitted, so AMPTGenesis fell
+            # back to its internal defaults. Emit them explicitly and wire the
+            # coordinate system / diffusion output to the CCAKE config so the IC
+            # cannot silently disagree with the hydro that consumes it.
+            hydro_ic = self.config['input'].get('hydrodynamics', {}).get('initial_conditions', {}) or {}
+            hydro_params = self.config['input'].get('hydrodynamics', {}).get('parameters', {}) or {}
+            diffusion = (self.config['input'].get('hydrodynamics', {})
+                         .get('hydro', {}).get('viscous_parameters', {})
+                         .get('diffusion', {}) or {})
+
+            coord = hydro_ic.get('coordinate_system', 'hyperbolic')
+            # CCAKE needs diffusion columns in the IC only if it reads an initial
+            # diffusion current; otherwise omit them.
+            output_diffusion = diffusion.get('input_initial_diffusion', False)
+            # match AMPTGenesis's write-cutoff to CCAKE's particle deletion cutoff
+            e_cutoff = params.get('energy_density_cutoff',
+                                  hydro_params.get('energy_cutoff', 0.15))
+            sample_radius = params.get('sample_radius', {}) or {}
+
+            # Section [sample_radius]
+            f.write("[sample_radius]\n")
+            f.write(f"xy = {sample_radius.get('xy', 2.0)}\n")
+            f.write(f"eta = {sample_radius.get('eta', 2.0)}\n\n")
+
+            # Section [coordinates]
+            f.write("[coordinates]\n")
+            f.write(f"system = {coord}\n\n")
+
+            # Section [input]
+            f.write("[input]\n")
+            f.write("format = ampt\n\n")
+
+            # Section [output]
+            f.write("[output]\n")
+            f.write(f"output_diffusion = {str(output_diffusion).lower()}\n")
+            f.write(f"energy_density_cutoff = {e_cutoff}\n")
 
         print(f"AMPTGenesis config file created at {config_file_path}")
         return config_file_path
@@ -107,84 +154,18 @@ class AmptGenesisOverlay(Overlay):
         #convert amptgenesis format to ccake
         self.convert_amptgenesis_format(os.path.join(output_dir, 'amptgenesis', 'amptgenesis.dat'), os.path.join(output_dir, 'amptgenesis', 'ccake_ic.dat'))
 
-        #insert overlay in db
-        insert_overlay(
-            self.db_connection,
-            event_id,
-            0,
-            0,
-            0,
-            0,
-            0,
-            "AMPTGenesis"
-        )
+        #insert overlay in db (AMPTGenesis is deterministic given its AMPT
+        #input, so it has no seed of its own)
+        insert_overlay(self.db_connection, event_id, None, "AMPTGenesis")
 
     def convert_amptgenesis_format(self, input_file, output_file):
-        # Initialize variables to hold header information
-        nx = ny = neta = Lx = Ly = Leta = None
-        xmin = ymin = etamin = None
-        header_prefix = "#"
-        column_line_found = False  # To track and skip the column header line
+        """Stage AMPTGenesis's output as CCAKE's initial condition file.
 
-        # Read input file line by line
-        with open(input_file, 'r') as infile:
-            lines = infile.readlines()
-
-        # Extract header information
-        for line in lines:
-            if line.startswith(header_prefix):
-                if "nx" in line:
-                    nx = int(line.split('=')[1].strip())
-                elif "ny" in line:
-                    ny = int(line.split('=')[1].strip())
-                elif "neta" in line:
-                    neta = int(line.split('=')[1].strip())
-                elif "Lx" in line:
-                    Lx = float(line.split('=')[1].strip())
-                elif "Ly" in line:
-                    Ly = float(line.split('=')[1].strip())
-                elif "Leta" in line:
-                    Leta = float(line.split('=')[1].strip())
-                elif "x y eta" in line:  # Detect and mark the column header line
-                    column_line_found = True
-            elif column_line_found:
-                # Stop processing headers after encountering the column header line
-                break
-
-        # Calculate step sizes and min values
-        stepx = Lx / (nx - 1) if nx else 1
-        stepy = Ly / (ny - 1) if ny else 1
-        stepEta = Leta / (neta - 1) if neta else 1
-        xmin, ymin, etamin = -Lx / 2, -Ly / 2, -Leta / 2
-
-        # Create header for output file
-        header_line = f"#0 {stepx} {stepy} {stepEta} 0 {xmin} {ymin} {etamin}\n"
-
-        # Open output file and write header
-        with open(output_file, 'w') as outfile:
-            outfile.write(header_line)
-
-            # Process and write data lines
-            data_start = False  # To skip lines until data starts
-            for line in lines:
-                if column_line_found and not data_start:
-                    # Skip the column header line, and set flag when actual data starts
-                    column_line_found = False
-                    data_start = True
-                    continue
-
-                if data_start and not line.startswith(header_prefix):
-                    values = list(map(float, line.split()))
-
-                    # Extract necessary values
-                    x, y, eta = values[0], values[1], values[2]
-                    epsilon, rhob, rhos, rhoq = values[3], values[18], values[29], values[19]
-                    ux, uy, ueta = values[4], values[5], values[6]
-                    bulk = values[7]  # Assuming trace as bulk pressure
-                    pixx, pixy, pixeta = values[12], values[13], values[14]
-                    piyy, piyeta, pietaeta = values[15], values[16], values[17]
-
-                    # Write to output file
-                    outfile.write(f"{x} {y} {eta} {epsilon} {rhob} {rhos} {rhoq} "
-                                f"{ux} {uy} {ueta} {bulk} {pixx} {pixy} {pixeta} "
-                                f"{piyy} {piyeta} {pietaeta}\n")
+        AMPTGenesis's output_to_file() already writes CCAKE's exact IC format:
+        a `#0 dx dy deta 0 xmin ymin etamin` grid header followed by
+        `x y eta e rhoB rhoS rhoQ ux uy ueta bulk pixx pixy pixeta piyy piyeta
+        pietaeta` data rows, with informational `#`-prefixed lines interspersed
+        (which CCAKE's read_ccake() skips). No reformatting is needed; this
+        just stages it under the path CCAKEHydro expects.
+        """
+        shutil.copy(input_file, output_file)

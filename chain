@@ -1,0 +1,280 @@
+#!/usr/bin/env bash
+# chain — manage the test_chain simulation stack.
+#
+#   ./chain install                 submodules + external deps + modules + tables
+#   ./chain rebuild <module...>     wipe a module's build and rebuild it
+#   ./chain update [module...|--all] [--latest] [--no-build]
+#                                   sync submodules to the pinned commit
+#                                   (--latest: to their branch tip instead);
+#                                   dirty submodules are skipped, never touched
+#   ./chain status [--remote]       submodule pins vs checkouts (+remote tips)
+#   ./chain doctor                  environment / build sanity checks
+#   ./chain validate [t0|t1|t2]     run the validation tiers (default t0)
+#   ./chain modules                 list known modules
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$HERE/setup/common.sh"
+
+# ---------------------------------------------------------------- registry --
+# Build order matters: deps of later modules come first.
+MODULES=(ampt trento iccing amptgenesis ccake is3d bqssampler
+         analytical_cooperfrye decays smash qvector_writter qvector_analysis
+         freestream sample_dijets)
+
+declare -A MOD_PATH=(
+  [ampt]=models/AMPT
+  [trento]=models/trento
+  [iccing]=models/ICCING
+  [amptgenesis]=models/AMPTGenesis
+  [ccake]=models/CCAKE
+  [is3d]=models/iS3D
+  [bqssampler]=models/BQSSampler
+  [analytical_cooperfrye]=models/analytical_cooperfrye
+  [decays]=models/decays
+  [smash]=models/smash
+  [qvector_writter]=models/qvector_writter
+  [qvector_analysis]=analysis/qvector_analysis
+  [freestream]=models/freestream
+  [sample_dijets]=utils/sample_dijets
+)
+
+# Artifact proving the module is built. PREFIX: means relative to $CONDA_PREFIX.
+declare -A MOD_EXE=(
+  [ampt]=models/AMPT/ampt
+  [trento]=models/trento/build/src/trento
+  [iccing]=models/ICCING/iccing
+  [amptgenesis]=models/AMPTGenesis/build/AMPT-Genesis.exe
+  [ccake]=models/CCAKE/build/ccake
+  [is3d]=models/iS3D/iS3D
+  [bqssampler]=models/BQSSampler/build/particlizer
+  [analytical_cooperfrye]=models/analytical_cooperfrye/fo
+  [decays]=models/decays/build/decays
+  [smash]=PREFIX:bin/smash
+  [qvector_writter]=models/qvector_writter/build/qvector_writter.exe
+  [qvector_analysis]=analysis/qvector_analysis/build
+  [freestream]=wrapper/external_packages/freestream.py
+  [sample_dijets]=utils/sample_dijets/sample_dijets
+)
+
+# Modules that are NOT git submodules (in-tree code): update does not apply.
+declare -A MOD_INTREE=( [analytical_cooperfrye]=1 [sample_dijets]=1 )
+
+DEPS=(hepmc3 pythia kokkos cabana)
+
+# ----------------------------------------------------------------- helpers --
+usage() { sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+
+known_module() {
+  local m
+  for m in "${MODULES[@]}"; do [[ "$m" == "$1" ]] && return 0; done
+  return 1
+}
+
+exe_path() {
+  local spec="${MOD_EXE[$1]}"
+  if [[ "$spec" == PREFIX:* ]]; then
+    echo "${CONDA_PREFIX:-/nonexistent}/${spec#PREFIX:}"
+  else
+    echo "$WORKDIR/$spec"
+  fi
+}
+
+is_built() { [[ -e "$(exe_path "$1")" ]]; }
+
+is_dirty() {  # <repo path relative to WORKDIR>
+  [[ -n "$(git -C "$WORKDIR/$1" status --porcelain 2>/dev/null | head -1)" ]]
+}
+
+run_logged() {  # <name> <script> [env...]
+  local name="$1" script="$2"; shift 2
+  mkdir -p "$WORKDIR/setup/logs"
+  log "building $name (log: setup/logs/$name.log)"
+  if ! env "$@" bash "$script" >"$WORKDIR/setup/logs/$name.log" 2>&1; then
+    warn "$name FAILED — tail of setup/logs/$name.log:"
+    tail -n 25 "$WORKDIR/setup/logs/$name.log" >&2
+    return 1
+  fi
+}
+
+# Populate any submodule whose working tree is still empty, so a plain
+# `git clone` (no --recurse-submodules) is enough. Already-checked-out
+# submodules — including the intentionally-dirty ones (BQSSampler, iS3D) — are
+# left untouched, honoring the same leave-dirty policy as `./chain update`.
+ensure_submodules() {
+  local path
+  while IFS= read -r path; do
+    [[ -n "$(ls -A "$WORKDIR/$path" 2>/dev/null)" ]] && continue   # already populated
+    log "initializing submodule $path"
+    git -C "$WORKDIR" submodule update --init --recursive "$path" \
+      || warn "could not init $path (network/auth?) — modules needing it will error"
+  done < <(git -C "$WORKDIR" config -f .gitmodules --get-regexp '^submodule\..*\.path$' | awk '{print $2}')
+}
+
+# ---------------------------------------------------------------- commands --
+cmd_install() {
+  require_conda
+  log "installing into conda prefix: $PREFIX (jobs: $JOBS)"
+  ensure_submodules
+  bash "$WORKDIR/setup/env.sh"
+  local d m failed=()
+  for d in "${DEPS[@]}"; do
+    run_logged "dep-$d" "$WORKDIR/setup/deps/$d.sh" || failed+=("dep-$d")
+  done
+  for m in "${MODULES[@]}"; do
+    run_logged "$m" "$WORKDIR/setup/modules/$m.sh" || failed+=("$m")
+  done
+  run_logged tables "$WORKDIR/setup/tables.sh" || failed+=(tables)
+  if (( ${#failed[@]} )); then
+    die "install finished with failures: ${failed[*]} (see setup/logs/)"
+  fi
+  log "install complete — run './chain doctor' to verify"
+}
+
+cmd_rebuild() {
+  (( $# )) || die "usage: ./chain rebuild <module...>   (see './chain modules')"
+  require_conda
+  local m
+  for m in "$@"; do
+    known_module "$m" || die "unknown module: $m (see './chain modules')"
+    run_logged "$m" "$WORKDIR/setup/modules/$m.sh" CLEAN=1 || die "$m rebuild failed"
+  done
+}
+
+cmd_update() {
+  local latest=0 nobuild=0 targets=()
+  while (( $# )); do
+    case "$1" in
+      --latest) latest=1 ;;
+      --no-build) nobuild=1 ;;
+      --all) targets=("${MODULES[@]}") ;;
+      *) known_module "$1" || die "unknown module: $1"; targets+=("$1") ;;
+    esac
+    shift
+  done
+  (( ${#targets[@]} )) || die "usage: ./chain update [module...|--all] [--latest] [--no-build]"
+
+  local m path branch changed=()
+  for m in "${targets[@]}"; do
+    [[ -n "${MOD_INTREE[$m]:-}" ]] && { log "$m is in-tree code, nothing to update"; continue; }
+    path="${MOD_PATH[$m]}"
+    if is_dirty "$path"; then
+      warn "$m ($path) has local modifications — skipping (never touched by ./chain)"
+      continue
+    fi
+    if (( latest )); then
+      branch="$(git config -f "$WORKDIR/.gitmodules" "submodule.$path.branch" || true)"
+      if [[ -z "$branch" ]]; then
+        warn "$m has no branch in .gitmodules — updating to pinned commit instead"
+        git -C "$WORKDIR" submodule update --init "$path"
+      else
+        log "$m: fetching origin/$branch"
+        git -C "$WORKDIR/$path" fetch origin
+        git -C "$WORKDIR/$path" checkout -q "$branch" 2>/dev/null || \
+          git -C "$WORKDIR/$path" checkout -q -b "$branch" "origin/$branch"
+        git -C "$WORKDIR/$path" merge --ff-only "origin/$branch"
+        changed+=("$path")
+      fi
+    else
+      git -C "$WORKDIR" submodule update --init "$path"
+    fi
+    if (( ! nobuild )); then
+      require_conda
+      run_logged "$m" "$WORKDIR/setup/modules/$m.sh" || die "$m build failed after update"
+    fi
+  done
+  if (( ${#changed[@]} )); then
+    log "submodules moved to branch tips: ${changed[*]}"
+    log "record the new pins with:  git add ${changed[*]} && git commit"
+  fi
+}
+
+cmd_status() {
+  local remote=0
+  [[ "${1:-}" == "--remote" ]] && remote=1
+  cd "$WORKDIR"
+  printf '%-22s %-12s %-11s %-11s %-7s %-6s' module branch pinned HEAD dirty built
+  (( remote )) && printf ' %-11s' remote
+  printf '\n'
+  local m path branch pin head dirty built tip
+  for m in "${MODULES[@]}"; do
+    path="${MOD_PATH[$m]}"
+    if [[ -n "${MOD_INTREE[$m]:-}" ]]; then
+      branch="(in-tree)"; pin=-; head=-; dirty=-
+    else
+      branch="$(git config -f .gitmodules "submodule.$path.branch" 2>/dev/null || echo '-')"
+      pin="$(git ls-tree HEAD "$path" 2>/dev/null | awk '{print substr($3,1,9)}')"
+      head="$(git -C "$path" rev-parse --short=9 HEAD 2>/dev/null || echo 'missing')"
+      if is_dirty "$path"; then dirty=YES; else dirty=no; fi
+    fi
+    if is_built "$m"; then built=yes; else built=NO; fi
+    printf '%-22s %-12s %-11s %-11s %-7s %-6s' "$m" "$branch" "${pin:--}" "$head" "$dirty" "$built"
+    if (( remote )) && [[ -z "${MOD_INTREE[$m]:-}" && "$branch" != '-' ]]; then
+      tip="$(git -C "$path" ls-remote origin "refs/heads/$branch" 2>/dev/null | awk '{print substr($1,1,9)}')"
+      printf ' %-11s' "${tip:-?}"
+    fi
+    printf '\n'
+  done
+  echo
+  echo "legend: pinned = commit recorded in test_chain HEAD; HEAD = commit checked out."
+  echo "        pinned != HEAD means an unrecorded update; dirty submodules are never touched by ./chain."
+}
+
+cmd_doctor() {
+  local ok=1
+  check() {  # <label> <cmd...>
+    local label="$1"; shift
+    if "$@" >/dev/null 2>&1; then
+      printf '  \033[1;32mok\033[0m  %s\n' "$label"
+    else
+      printf '  \033[1;31mMISSING\033[0m %s\n' "$label"; ok=0
+    fi
+  }
+  echo "environment:"
+  check "conda env active (CONDA_PREFIX)" test -n "${CONDA_PREFIX:-}"
+  check "g++" command -v g++
+  check "gfortran" command -v gfortran
+  check "cmake" command -v cmake
+  check "python yaml+jsonschema" python -c 'import yaml, jsonschema'
+  check "pytest" python -c 'import pytest'
+  echo "external dependencies (in \$CONDA_PREFIX):"
+  check "PYTHIA8 (pythia8316/bin/pythia8-config)" test -x "${CONDA_PREFIX:-/none}/pythia8316/bin/pythia8-config"
+  check "HepMC3 headers" test -d "${CONDA_PREFIX:-/none}/include/HepMC3"
+  check "Kokkos headers" test -f "${CONDA_PREFIX:-/none}/include/Kokkos_Core.hpp"
+  check "Cabana headers" test -f "${CONDA_PREFIX:-/none}/include/Cabana_Core.hpp"
+  echo "tables:"
+  check "tables/thermo.h5 (CCAKE EoS)" test -s "$WORKDIR/tables/thermo.h5"
+  check "tables/iS3D" test -d "$WORKDIR/tables/iS3D/tables"
+  check "tables/BQSSampler" test -s "$WORKDIR/tables/BQSSampler/grad_coeffs.dat"
+  echo "module executables:"
+  local m
+  for m in "${MODULES[@]}"; do
+    check "$m ($(exe_path "$m" | sed "s|^$WORKDIR/||"))" test -e "$(exe_path "$m")"
+  done
+  (( ok )) && log "doctor: all checks passed" || die "doctor: some checks failed (see above)"
+}
+
+cmd_validate() {
+  local tier="${1:-t0}"
+  case "$tier" in
+    t0|t1|t2) ;;
+    *) die "usage: ./chain validate [t0|t1|t2]" ;;
+  esac
+  [[ -d "$WORKDIR/tests/$tier" ]] || die "tests/$tier not found"
+  log "running $tier validation"
+  ( cd "$WORKDIR" && python -m pytest "tests/$tier" -q )
+}
+
+# ---------------------------------------------------------------- dispatch --
+cmd="${1:-}"; shift || true
+case "$cmd" in
+  install)  cmd_install "$@" ;;
+  rebuild)  cmd_rebuild "$@" ;;
+  update)   cmd_update "$@" ;;
+  status)   cmd_status "$@" ;;
+  doctor)   cmd_doctor "$@" ;;
+  validate) cmd_validate "$@" ;;
+  modules)  printf '%s\n' "${MODULES[@]}" ;;
+  ""|-h|--help|help) usage ;;
+  *) warn "unknown command: $cmd"; usage 1 ;;
+esac

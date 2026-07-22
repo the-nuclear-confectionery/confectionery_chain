@@ -1,0 +1,112 @@
+# T1 smoke twin of examples/auau_19p6_ampt_full — coarse grid, fixed seeds.
+# Placeholders are filled by tests/conftest.py.
+#
+# Grid resolution note: step_x/step_y/step_eta are chosen relative to
+# AMPTGenesis's smearing widths (sigma_r/sigma_eta: 0.6 fm below) so the
+# smeared profile is adequately sampled — CCAKE's SPH evolver can produce
+# NaNs/segfaults on grids that undersample the deposited profile.
+global:
+  output: __OUTPUT__
+  tmp: __TMP__
+  basedir: __BASEDIR__
+  nevents: 1
+  grid:
+    x_max: 14.0     # room for radial outflow; a ±10 fm grid overflows by ~t=14 fm/c
+    y_max: 14.0
+    eta_max: 4.0
+    step_x: 0.3
+    step_y: 0.3
+    step_eta: 0.3
+  energy:
+    value: 19.6
+    unit: GeV
+  tau_hydro: 1.0
+  ion_A: Au
+  ion_B: Au
+
+input:
+  initial_conditions:
+    type: ampt
+    parameters:
+      ion_A: {species: Au}
+      ion_B: {species: Au}
+      BMIN: 0.0
+      BMAX: 3.3
+      alpha: 0.47140452 # 3 mb parton cross section (paired with screening mass), per bes/19p6
+      parton_screening_mass: 3.2264
+      hijing_seed: 20260708
+      parton_cascade_seed: 8
+
+  overlay:
+    type: AMPTGenesis
+    parameters:
+      smearing:
+        sigma_r: 1.0     # AMPTGenesis standard; <1.0 gives a spiky, under-smeared IC
+        sigma_eta: 1.0
+        K: 1.44          # 19.6 GeV normalization; K~1.0 under-energizes -> premature freeze-out
+
+  preequilibrium:
+    type: none
+
+  hydrodynamics:
+    type: CCAKE
+    parameters:
+      dt: 0.05
+      h_T: 0.3
+      h_eta: 0.3
+      factorized_kernel: true    # 3D factorized SPH kernel
+      energy_cutoff: 0.15
+      max_tau: 20.0              # smoke test; full runs use 30
+      buffer_particles:
+        enabled: true            # pad the grid edge so radial outflow doesn't run off it
+        circular: true
+        padding_thickness: 0.1
+    hydro:
+      baryon_charge_enabled: true      # baryon-rich; strangeness/electric off
+      strange_charge_enabled: false
+      electric_charge_enabled: false
+      viscous_parameters:
+        shear:
+          mode: constant
+          constant_eta_over_s: 0.08
+        bulk:
+          mode: cs2_dependent
+          constant_zeta_over_s: 0.08
+          modulate_with_tanh: false
+        diffusion:
+          mode: disabled
+    eos:
+      online_inverter_enabled: true
+      normalize_by_T: true         # Houston BSQ table needs these guards to
+      restrict_mu_T_ratios: true   # invert (smoke test uses shipped tables/;
+      prohibit_unstable_cs2: true  # a physics run needs a baryon-rich EoS)
+    particlization:
+      enabled: true
+      type: fixed_T
+      T: 150.0
+    output:
+      txt_evolution: false
+      hdf_evolution: false
+      print_conservation_state: true
+
+  particlization:
+    type: BQSSampler
+    parameters:
+      samples: 2
+      use_muB: true
+      use_muS: false
+      use_muQ: false
+      seed: 12345
+
+  afterburner:
+    type: smash
+    parameters:
+      decays_only: true
+
+  analysis:
+    type: qvector_writter
+    parameters:
+      n_max: 6
+      calculate_charged: true
+      input_type: smash_hepmc3
+      output_type: root

@@ -1,0 +1,105 @@
+# T1 smoke twin of examples/pbpb_5p02_trento_iccing — fixed seeds, 0-5%
+# centrality selection via the sigma0d30 entropy dict (misc/, editable).
+#
+# Grid resolution note: step_x/step_y must stay well below nucleon-width
+# (0.3 fm) or the deposited TRENTo/ICCING profile is undersampled — CCAKE's
+# SPH evolver can then segfault on the near-empty initial state.
+global:
+  output: __OUTPUT__
+  tmp: __TMP__
+  basedir: __BASEDIR__
+  nevents: 1
+  grid:
+    x_max: 14.0     # IC domain; CCAKE's neighbour grid is 4x this (system_state.cpp),
+    y_max: 14.0     # so the expanding remnant has room without a huge config grid
+    eta_max: 10.0
+    step_x: 0.1
+    step_y: 0.1
+    step_eta: 0.0
+  energy:
+    value: 5.02
+    unit: TeV
+  tau_hydro: 0.6
+  ion_A: Pb
+  ion_B: Pb
+
+input:
+  initial_conditions:
+    type: Trento
+    parameters:
+      ion_A: {species: Pb}
+      ion_B: {species: Pb}
+      nucleon-width: 0.3    # fm (matches the sigma0d30 entropy dict)
+      constit-width: 0.3    # fm
+      normalization: 1.0    # ICCING requires TRENTo normalization = 1.0
+      # centrality selection via the entropy dict (explicit path required, else
+      # the wrapper disables centrality). Dict is editable at misc/.
+      entropy-dict-dir: __BASEDIR__/misc/PbPb_5020_sigma0d30_3M.dat
+      centrality-min: 0     # %
+      centrality-max: 5     # %
+      seed: 13150909
+
+  overlay:
+    type: ICCING
+    parameters:
+      trento_normalization: 125
+      seed: 8
+
+  preequilibrium:
+    type: none
+
+  hydrodynamics:
+    type: CCAKE
+    parameters:
+      dt: 0.05
+      h_T: 0.3
+      h_eta: 0.3
+      energy_cutoff: 0.15
+    hydro:
+      baryon_charge_enabled: true
+      strange_charge_enabled: true
+      electric_charge_enabled: true
+      viscous_parameters:
+        shear:
+          mode: constant
+          constant_eta_over_s: 0.12
+        bulk:
+          mode: cs2_dependent      # shear + bulk both on (no tanh modulation)
+    eos:
+      online_inverter_enabled: true
+      normalize_by_T: true
+      restrict_mu_T_ratios: true
+      prohibit_unstable_cs2: true
+    particlization:
+      enabled: true
+      type: fixed_T
+      T: 150.0
+    output:
+      txt_evolution: false
+      hdf_evolution: false
+
+  particlization:
+    type: BQSSampler
+    parameters:
+      mode: ccakev2
+      dimension: 2
+      use_muB: true
+      use_muS: true
+      use_muQ: true
+      samples: 2
+      sampling_method: regular
+      delta_f_shear: true
+      seed: 42
+
+  afterburner:
+    type: smash
+    parameters:
+      decays_only: true
+
+  analysis:
+    type: qvector_writter
+    parameters:
+      n_max: 6
+      calculate_charged: true
+      input_type: smash_hepmc3
+      output_type: root

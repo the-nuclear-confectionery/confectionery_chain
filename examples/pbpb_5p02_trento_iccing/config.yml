@@ -1,0 +1,110 @@
+# Pb+Pb @ sqrt(s_NN) = 5.02 TeV — TRENTo + ICCING chain (LHC, 2+1D with BSQ charges)
+# TRENTo -> ICCING (BSQ charge deposition) -> CCAKE (2+1D) -> BQSSampler -> SMASH decays -> Q-vectors
+#
+# Parameters follow CCAKE's reference config_iccing_PbPb.yaml. The Houston BSQ
+# EoS (the shipped tables/) requires normalize_by_T + restrict_mu_T_ratios true
+# to invert cleanly — omitting them makes the root-finder fail on many cells.
+#
+# Replace the three <REPLACE:...> paths, then:
+#   python wrapper/main.py 0 pbpb_5p02.db examples/pbpb_5p02_trento_iccing/config.yml
+global:
+  output: <REPLACE:/path/for/results>
+  tmp: <REPLACE:/path/for/scratch>
+  basedir: <REPLACE:/path/to/test_chain>
+  nevents: 1
+  grid:
+    x_max: 12.0
+    y_max: 12.0
+    eta_max: 10.0
+    step_x: 0.06
+    step_y: 0.06
+    step_eta: 0.0     # zero -> (2+1)D boost-invariant hydro
+  energy:
+    value: 5.02
+    unit: TeV
+  tau_hydro: 0.6
+  ion_A: Pb
+  ion_B: Pb
+
+input:
+  initial_conditions:
+    type: Trento
+    parameters:
+      ion_A: {species: Pb}
+      ion_B: {species: Pb}
+      nucleon-width: 0.5
+      constit-width: 0.5
+      normalization: 1.0      # ICCING requires TRENTo normalization = 1.0
+      centrality-min: 0.0
+      centrality-max: 5.0
+
+  overlay:
+    type: ICCING
+    parameters:
+      trento_normalization: 125   # ICCING's internal normalization
+
+  preequilibrium:
+    type: none
+
+  hydrodynamics:
+    type: CCAKE
+    parameters:
+      dt: 0.05
+      h_T: 0.3
+      h_eta: 0.3          # unused in 2D, kept for completeness
+      rk_order: 2
+      energy_cutoff: 0.15
+      max_tau: 15.0
+    hydro:
+      baryon_charge_enabled: true    # ICCING deposits B, S, Q fluctuations
+      strange_charge_enabled: true
+      electric_charge_enabled: true
+      viscous_parameters:
+        shear:
+          mode: constant
+          constant_eta_over_s: 0.12
+        bulk:
+          mode: constant             # bulk disabled (shear-only), per PbPb reference
+          constant_zeta_over_s: 0.0
+    eos:
+      type: table
+      online_inverter_enabled: true
+      normalize_by_T: true           # required for the Houston BSQ table
+      restrict_mu_T_ratios: true
+      prohibit_unstable_cs2: true
+    particlization:
+      enabled: true
+      type: fixed_T
+      T: 150.0
+    output:
+      txt_evolution: false
+      hdf_evolution: false
+      check_causality: true
+
+  particlization:
+    type: BQSSampler
+    parameters:
+      mode: ccakev2
+      coordinate_system: hyperbolic
+      dimension: 2
+      use_muB: true
+      use_muS: true
+      use_muQ: true
+      samples: 500
+      sampling_method: regular
+      delta_f_shear: true
+      normalize_deltaf: true
+      y_max: 5.0
+
+  afterburner:
+    type: smash
+    parameters:
+      decays_only: true
+
+  analysis:
+    type: qvector_writter
+    parameters:
+      n_max: 6
+      calculate_charged: true
+      input_type: smash_hepmc3
+      output_type: root

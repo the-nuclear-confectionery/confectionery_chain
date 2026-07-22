@@ -1,0 +1,108 @@
+# Pb+Pb @ sqrt(s_NN) = 5.02 TeV — TRENTo -> CCAKE directly (2+1D, no BSQ charges)
+# TRENTo (entropy) -> CCAKE (2+1D, charge-less, input_as_entropy) -> BQSSampler -> SMASH decays -> Q-vectors
+#
+# The simplest hydro path: TRENTo deposits entropy, CCAKE evolves it with no
+# conserved-charge currents. Uses the shipped Houston EoS tables (muB~0), so
+# it is runnable out of the box (only the three <REPLACE:...> paths needed).
+#
+#   python wrapper/main.py 0 pbpb_5p02.db examples/pbpb_5p02_trento_ccake/config.yml
+global:
+  output: <REPLACE:/path/for/results>
+  tmp: <REPLACE:/path/for/scratch>
+  basedir: <REPLACE:/path/to/test_chain>
+  nevents: 1
+  grid:
+    x_max: 12.0
+    y_max: 12.0
+    eta_max: 10.0
+    step_x: 0.1
+    step_y: 0.1
+    step_eta: 0.0     # zero -> (2+1)D
+  energy:
+    value: 5.02
+    unit: TeV
+  tau_hydro: 0.6
+  ion_A: Pb
+  ion_B: Pb
+
+input:
+  initial_conditions:
+    type: Trento
+    parameters:
+      ion_A: {species: Pb}
+      ion_B: {species: Pb}
+      nucleon-width: 0.5
+      constit-width: 0.5
+      centrality-min: 0.0
+      centrality-max: 5.0
+
+  overlay:
+    type: none
+
+  preequilibrium:
+    type: none
+
+  hydrodynamics:
+    type: CCAKE
+    initial_conditions:
+      input_as_entropy: true      # TRENTo output is entropy density
+    parameters:
+      dt: 0.05
+      h_T: 0.3
+      h_eta: 0.3
+      rk_order: 2
+      energy_cutoff: 0.15
+      max_tau: 15.0
+    hydro:
+      baryon_charge_enabled: false    # charge-less evolution
+      strange_charge_enabled: false
+      electric_charge_enabled: false
+      viscous_parameters:
+        shear:
+          mode: constant
+          constant_eta_over_s: 0.12
+        bulk:
+          mode: cs2_dependent
+          constant_zeta_over_s: 0.12
+    eos:
+      type: table
+      online_inverter_enabled: true
+      normalize_by_T: true
+      restrict_mu_T_ratios: true
+      prohibit_unstable_cs2: true
+    particlization:
+      enabled: true
+      type: fixed_T
+      T: 150.0
+    output:
+      txt_evolution: false
+      hdf_evolution: false
+      check_causality: true
+
+  particlization:
+    type: BQSSampler
+    parameters:
+      mode: ccakev2
+      coordinate_system: hyperbolic
+      dimension: 2
+      use_muB: false
+      use_muS: false
+      use_muQ: false
+      samples: 500
+      sampling_method: regular
+      delta_f_shear: true
+      normalize_deltaf: true
+      y_max: 5.0
+
+  afterburner:
+    type: smash
+    parameters:
+      decays_only: true
+
+  analysis:
+    type: qvector_writter
+    parameters:
+      n_max: 6
+      calculate_charged: true
+      input_type: smash_hepmc3
+      output_type: root

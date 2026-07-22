@@ -1,0 +1,109 @@
+# Restart from a hydro initial condition — skip IC/overlay/pre-equilibrium and
+# run CCAKE onward from an existing CCAKE-format IC file.
+# CCAKE -> BQSSampler -> SMASH decays -> Q-vectors
+#
+# Use this to re-run hydro (and everything after) on a pre-made initial
+# condition — e.g. a saved ccake_ic.dat from a previous TRENTo/AMPT run
+# (persist one with initial_conditions.parameters.keep_result: true, which
+# writes ccake_ic_<id>.dat to the top-level output dir).
+#
+# The three upstream stages are 'none'; because there is no upstream stage to
+# infer the IC from, hydrodynamics.initial_conditions.file AND .type must be
+# set explicitly (CCAKE errors otherwise).
+#
+# Replace every <REPLACE:...>, then:
+#   python wrapper/main.py 0 restart.db examples/restart_from_hydro/config.yml
+global:
+  output: <REPLACE:/path/for/results>
+  tmp: <REPLACE:/path/for/scratch>
+  basedir: <REPLACE:/path/to/test_chain>
+  nevents: 1
+  grid:
+    x_max: 12.0
+    y_max: 12.0
+    eta_max: 10.0
+    step_x: 0.1
+    step_y: 0.1
+    step_eta: 0.0       # match the dimensionality of your IC file (0 -> 2+1D)
+  energy:
+    value: 5.02
+    unit: TeV
+  tau_hydro: 0.6        # must match the tau0 the IC file was written at
+  ion_A: Pb
+  ion_B: Pb
+
+input:
+  initial_conditions:
+    type: none
+
+  overlay:
+    type: none
+
+  preequilibrium:
+    type: none
+
+  hydrodynamics:
+    type: CCAKE
+    initial_conditions:
+      type: ccake                       # required when reading an external file
+      file: <REPLACE:/path/to/ccake_ic.dat>   # a CCAKE-format IC (e.g. a saved ccake_ic_0.dat)
+      dimension: 2                      # 2 or 3; must match the grid/file
+      input_as_entropy: false           # true if the IC stores entropy density
+      coordinate_system: hyperbolic
+    parameters:
+      dt: 0.05
+      h_T: 0.3
+      h_eta: 0.3
+      rk_order: 2
+      energy_cutoff: 0.15
+      max_tau: 15.0
+    hydro:
+      baryon_charge_enabled: false
+      strange_charge_enabled: false
+      electric_charge_enabled: false
+      viscous_parameters:
+        shear:
+          mode: constant
+          constant_eta_over_s: 0.12
+        bulk:
+          mode: cs2_dependent
+          constant_zeta_over_s: 0.0
+    eos:
+      type: table
+      online_inverter_enabled: true
+      normalize_by_T: true
+      restrict_mu_T_ratios: true
+      prohibit_unstable_cs2: true
+    particlization:
+      enabled: true
+      type: fixed_T
+      T: 150.0
+    output:
+      txt_evolution: false
+      hdf_evolution: false
+      check_causality: true
+
+  particlization:
+    type: BQSSampler
+    parameters:
+      mode: ccakev2
+      coordinate_system: hyperbolic
+      dimension: 2
+      samples: 500
+      sampling_method: regular
+      delta_f_shear: true
+      normalize_deltaf: true
+      y_max: 5.0
+
+  afterburner:
+    type: smash
+    parameters:
+      decays_only: true
+
+  analysis:
+    type: qvector_writter
+    parameters:
+      n_max: 6
+      calculate_charged: true
+      input_type: smash_hepmc3
+      output_type: root

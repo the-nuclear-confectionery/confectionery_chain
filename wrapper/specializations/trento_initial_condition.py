@@ -243,9 +243,15 @@ class TrentoInitialCondition(InitialCondition):
         ## Run TRENTo
         # trento executable from basedir
         trento_executable = self.config['global']['basedir'] + '/models/trento/build/src/trento'
-        command = f"{trento_executable} -c {config_file_path} > {output_file}"
-        print(f"Running: {command}")
-        os.system(command)
+        print(f"Running: {trento_executable} -c {config_file_path} > {output_file}")
+        with open(output_file, 'w') as f:
+            result = subprocess.run([trento_executable, '-c', config_file_path],
+                                    stdout=f, stderr=subprocess.STDOUT)
+        if result.returncode != 0:
+            with open(output_file) as f:
+                tail = f.read()[-2000:]
+            raise RuntimeError(
+                f"TRENTo failed (exit {result.returncode}) — tail of {output_file}:\n{tail}")
 
         # Parse the output and insert results into the database
         events_data = self.parse_output(output_file)

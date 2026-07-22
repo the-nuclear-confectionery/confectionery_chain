@@ -1,0 +1,4 @@
+# converted from sample_dijets CSV (both dijet partons listed)
+# x[fm] y[fm] eta_s pT[GeV] phi rapidity
+-1.26649159 -1.14784090 0.58754442 162.43947857 1.32310013 0.58796126
+-1.46219464 -1.92170920 -0.84440232 162.43947857 -1.81849252 -0.84670899

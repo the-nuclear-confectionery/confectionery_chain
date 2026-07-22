@@ -1,0 +1,22 @@
+name: T0 validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  t0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false   # T0 is pure-python; no module builds needed
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - run: pip install pyyaml jsonschema pytest
+
+      - run: python -m pytest tests/t0 -v

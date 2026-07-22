@@ -7,7 +7,6 @@ tables/*
 *.pyc
 *.db
 analysis/build
-models/AMPT
 models/decays/*.o
 wrapper/external_packages
 .vscode
@@ -18,6 +17,11 @@ wrapper/external_packages
 
 # Build artifacts
 *.o
+utils/sample_dijets/sample_dijets
+
+# CCAKE/AMPTGenesis write a debug.root relative to the wrapper's CWD (the
+# repo root, per the README quickstart) rather than the per-event output dir
+debug.root
 
 # Run outputs (per-run scratch, not versioned)
 db_*/
@@ -27,3 +31,4 @@ log*.dat
 # Per-run generated configs and event lists
 tmp_*.yaml
 *_event_list.txt
+repro_jets_tiny/

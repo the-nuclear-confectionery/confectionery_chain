@@ -1,0 +1,142 @@
+# Au+Au @ sqrt(s_NN) = 19.6 GeV — AMPT with a continuous SOURCE term into CCAKE
+# AMPT -> AMPTGenesis (tau0 IC) -> CCAKE (3+1D + AMPT source) -> BQSSampler -> SMASH decays -> Q-vectors
+#
+# Difference from auau_19p6_ampt_full: instead of dumping *all* AMPT partons
+# onto the tau0 surface, AMPTGenesis builds the tau0 initial condition and the
+# partons that form *after* tau0 are fed into the running hydro as a source
+# term (hydro.source, mirroring CCAKE's input_ampt.yaml). This is the physically
+# correct treatment of late-forming partons at BES energies.
+#
+# Replace every <REPLACE:...>, then:
+#   python wrapper/main.py 0 auau_19p6.db examples/auau_19p6_ampt_source/config.yml
+#
+# NOTE: hydro.source.file must point at this event's AMPT parton output
+# (event_<id>/ampt/parton-initial-afterPropagation.dat). The path below is
+# written for event 0 under the results dir; adjust per event id.
+global:
+  output: <REPLACE:/path/for/results>
+  tmp: <REPLACE:/path/for/scratch>
+  basedir: <REPLACE:/path/to/test_chain>
+  nevents: 1
+  grid:
+    x_max: 12.0
+    y_max: 12.0
+    eta_max: 6.0
+    step_x: 0.2
+    step_y: 0.2
+    step_eta: 0.2     # non-zero -> (3+1)D hydro (required by AMPTGenesis)
+  energy:
+    value: 19.6
+    unit: GeV
+  tau_hydro: 1.0      # AMPT/AMPTGenesis tau0 and hydro start time
+  ion_A: Au
+  ion_B: Au
+
+input:
+  initial_conditions:
+    type: ampt
+    parameters:
+      ion_A: {species: Au}
+      ion_B: {species: Au}
+      BMIN: 0.0
+      BMAX: 3.3        # ~0-5% central Au+Au
+      ISOFT: 4         # string melting
+      NTMAX: 150
+      DT: 0.2
+      alpha: 0.47140452        # 3 mb parton cross section (paired with screening mass)
+      parton_screening_mass: 3.2264
+      hijing_seed: random
+      parton_cascade_seed: random
+
+  overlay:
+    type: AMPTGenesis
+    parameters:
+      smearing:
+        sigma_r: 1.0
+        sigma_eta: 1.0
+        K: 1.44          # 19.6 GeV normalization (calibrated to dNch/deta)
+        backpropagate: false   # late partons handled by the source term below, not folded into the IC
+
+  preequilibrium:
+    type: none
+
+  hydrodynamics:
+    type: CCAKE
+    parameters:
+      dt: 0.05
+      h_T: 0.3
+      h_eta: 0.3
+      rk_order: 2
+      factorized_kernel: true   # 3D factorized SPH kernel
+      energy_cutoff: 0.15
+      max_tau: 30.0
+    hydro:
+      baryon_charge_enabled: true     # BES: baryon-rich, follow muB
+      strange_charge_enabled: false
+      electric_charge_enabled: false
+      source:
+        type: ic                # continuous source deposition (vs 'jet' / 'disabled')
+        model: AMPT             # AMPT parton list as the source
+        # AMPT parton output for THIS event (written to event_<id>/ampt/):
+        file: <REPLACE:/path/for/results>/event_0/ampt/parton-initial-afterPropagation.dat
+        smearing_radius: 1.4    # transverse Gaussian smearing (fm)
+        smearing_radius_eta: 0.5
+        normalization: 1.0
+        enable_baryon: true     # deposit baryon number along with energy
+        enable_strangeness: false
+        enable_electric: false
+        propagate: false        # AMPT sources do not deplete like jets
+        deposit_steps: 1
+      viscous_parameters:
+        shear:
+          mode: constant
+          constant_eta_over_s: 0.08
+        bulk:
+          mode: cs2_dependent
+          constant_zeta_over_s: 0.08
+          modulate_with_tanh: false
+        diffusion:
+          mode: disabled
+    eos:
+      type: table
+      online_inverter_enabled: true
+      normalize_by_T: true            # correct for the shipped tables/ (bh_us needs false)
+      restrict_mu_T_ratios: true
+      prohibit_unstable_cs2: true
+    particlization:
+      enabled: true
+      type: fixed_T
+      T: 150.0
+    output:
+      print_conservation_state: true  # source terms inject energy/charge -> watch conservation
+      txt_evolution: false
+      hdf_evolution: false
+
+  particlization:
+    type: BQSSampler
+    parameters:
+      mode: ccakev2
+      coordinate_system: hyperbolic
+      dimension: 3
+      use_muB: true
+      use_muS: false
+      use_muQ: false
+      samples: 200
+      sampling_method: regular
+      delta_f_shear: true
+      delta_f_bulk: true
+      normalize_deltaf: true
+      y_max: 5.0
+
+  afterburner:
+    type: smash
+    parameters:
+      decays_only: true
+
+  analysis:
+    type: qvector_writter
+    parameters:
+      n_max: 6
+      calculate_charged: true
+      input_type: smash_hepmc3
+      output_type: root

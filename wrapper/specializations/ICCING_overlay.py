@@ -47,7 +47,10 @@ class ICCINGOverlay(Overlay):
             print("Warning: Overlay input type is not sparse, setting it to sparse.")
             self.config['input']['overlay']['parameters']['input_type'] = 'sparse'
         
-        if self.config['input'].get('preequilibrium', {}).get('type')!= None:
+        pre_type = (self.config['input'].get('preequilibrium', {}) or {}).get('type')
+        if isinstance(pre_type, str):
+            pre_type = pre_type.lower()
+        if pre_type not in (None, 'none'):
             raise ValueError("Preequilibrium type must be 'none' when using ICCING overlay.")
 
 
@@ -138,8 +141,6 @@ class ICCINGOverlay(Overlay):
         # Execute the ICCING overlay program
         executable_path = self.config['global']['basedir'] + '/models/ICCING/iccing'
         command = f"{executable_path} {config_file_path}"
-        #print current dir
-        os.system("pwd")
         print(f"Running ICCING overlay with command: {command}")
         subprocess.run([executable_path, config_file_path], check=True)
 

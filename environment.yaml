@@ -10,6 +10,8 @@ dependencies:
   - pandas
   - uproot
   - seaborn
+  - pytest
+  - jsonschema
   
   # General libraries and tools
   - parallel

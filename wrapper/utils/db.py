@@ -23,6 +23,13 @@ def initialize_database(db_path):
     )
     ''')
 
+    # Added after the initial release; existing databases predate this column,
+    # so CREATE TABLE IF NOT EXISTS above won't add it — do so explicitly.
+    try:
+        cursor.execute('ALTER TABLE events ADD COLUMN provenance_path TEXT')
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
     # Create initial conditions table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS initial_conditions (
@@ -248,5 +255,12 @@ def update_analysis_type(connection, event_id, analysis_type):
     cursor.execute('''
     UPDATE events SET analysis_type = ? WHERE event_id = ?
     ''', (analysis_type, event_id))
+    connection.commit()
+
+def update_provenance_path(connection, event_id, provenance_path):
+    cursor = connection.cursor()
+    cursor.execute('''
+    UPDATE events SET provenance_path = ? WHERE event_id = ?
+    ''', (provenance_path, event_id))
     connection.commit()
 

@@ -1,0 +1,30 @@
+# Sample dijets configuration file (INI-style key=value with [sections]).
+# The wrapper generates one of these per event when
+# input.hydrodynamics.jets_sampling.enabled is true — this example is for
+# standalone use.
+
+[input]
+# Directory containing the IC output. The vertex file is looked up in
+# <ampt_dir>/ana/ first, then <ampt_dir>/ directly.
+#   AMPT   -> point at <event>/ampt    (binary-collisions.dat / minijets)
+#   TRENTo -> point at <event>/trento  (ncoll_list0.dat, needs ncoll = true)
+ampt_dir = /path/to/event_0/ampt
+# binary  -> AMPT binary-collisions.dat
+# minijet -> AMPT minijet-initial-beforePropagation.dat
+# trento  -> TRENTo ncoll_list0.dat (transverse binary-collision midpoints, z=t=0)
+vertex_source = binary
+
+[pythia]
+# sqrt(s_NN) in GeV and the pT-hat window for HardQCD dijet production
+sqrts = 5360
+pt_min = 150
+pt_max = 200
+
+[sampling]
+n_dijets = 1
+
+[output]
+csv_file = dijets.csv
+# tau_hydro = 0 -> write the production point; > 0 -> free-stream the partons
+# to that Milne proper time (fm/c). Output is always Milne coordinates.
+tau_hydro = 0.4

@@ -9,6 +9,7 @@
 [submodule "models/smash"]
 	path = models/smash
 	url = git@github.com:the-nuclear-confectionery/smash.git
+	branch = main
 [submodule "models/iS3D"]
 	path = models/iS3D
 	url = git@github.com:the-nuclear-confectionery/iS3D.git
@@ -16,7 +17,7 @@
 [submodule "models/ICCING"]
 	path = models/ICCING
 	url = git@github.com:the-nuclear-confectionery/ICCING.git
-	branch =  dba17456a1a213ffc36399548064fef02096aff4
+	branch = cpp_fix
 [submodule "models/AMPTGenesis"]
 	path = models/AMPTGenesis
 	url = git@github.com:USPHydro/AMPTGenesis.git
@@ -39,4 +40,8 @@
 [submodule "models/BQSSampler"]
 	path = models/BQSSampler
 	url = git@github.com:the-nuclear-confectionery/BQSSampler.git
+	branch = main
+[submodule "models/AMPT"]
+	path = models/AMPT
+	url = git@github.com:the-nuclear-confectionery/AMPT.git
 	branch = main

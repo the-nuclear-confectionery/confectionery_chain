@@ -20,10 +20,13 @@ from specializations.none_afterburner import NoneAfterburner
 from specializations.none_analysis import NoneAnalysis
 from utils.validate_collision_system import CollisionSystem
 from utils.db import initialize_database, insert_event, update_event_centrality_estimator, update_ic_type, update_overlay_type\
-                    , update_hydro_type, update_particlization_type, update_afterburner_type, update_analysis_type, update_preequilibrium_type
+                    , update_hydro_type, update_particlization_type, update_afterburner_type, update_analysis_type, update_preequilibrium_type\
+                    , update_provenance_path
+from utils.provenance import write_provenance
 import argparse
 import os
 import shutil
+import subprocess
 
 def main():
     centrality_estimator = None
@@ -43,8 +46,11 @@ def main():
     os.makedirs(os.path.join(config['global']['output'], f"event_{args.event_id}"), exist_ok=True)
     os.makedirs(os.path.join(config['global']['tmp'], f"event_{args.event_id}"), exist_ok=True)
     tables_dir = os.path.join(config['global']['basedir'], "tables")
-    #copy tables dir to tmp dir with rsync
-    os.system(f"rsync -a {tables_dir} {os.path.join(config['global']['tmp'], f'event_{args.event_id}')}/") 
+    #copy tables dir to tmp dir with rsync (some stages, e.g. ICCING, read
+    #their inputs from the per-event tmp copy rather than tables_dir directly)
+    event_tmp_dir = os.path.join(config['global']['tmp'], f"event_{args.event_id}")
+    subprocess.run(['rsync', '-a', tables_dir + '/', os.path.join(event_tmp_dir, 'tables') + '/'],
+                   check=True)
     
     #copy config to output dir
     shutil.copy(args.config_path, os.path.join(config['global']['output'], f"event_{args.event_id}", "config.yml"))
@@ -60,14 +66,19 @@ def main():
         os.path.join(config['global']['output'], f"event_{args.event_id}", "config.yml")
     )
 
-    # Detect and initialize the modules
-    ic_type = config['input'].get('initial_conditions', {}).get('type', 'none').lower()
-    overlay_type = config['input'].get('overlay', {}).get('type', 'none').lower()
-    preequilibrium_type = config['input'].get('preequilibrium', {}).get('type', 'none').lower()
-    hydro_type = config['input'].get('hydrodynamics', {}).get('type', 'none').lower()
-    particlization_type = config['input'].get('particlization', {}).get('type', 'none').lower()
-    afterburner_type = config['input'].get('afterburner', {}).get('type', 'none').lower()
-    analysis_type = config['input'].get('analysis', {}).get('type', 'none').lower()
+    # Detect and initialize the modules. A stage may be absent, `type: none`,
+    # or an explicit null — all mean "disabled".
+    def stage_type(section):
+        stage = config['input'].get(section) or {}
+        return (stage.get('type') or 'none').lower()
+
+    ic_type = stage_type('initial_conditions')
+    overlay_type = stage_type('overlay')
+    preequilibrium_type = stage_type('preequilibrium')
+    hydro_type = stage_type('hydrodynamics')
+    particlization_type = stage_type('particlization')
+    afterburner_type = stage_type('afterburner')
+    analysis_type = stage_type('analysis')
 
     #report the simulation chain stages and how it will be executed
     print(f"Running simulation chain for event {args.event_id}:")
@@ -193,6 +204,13 @@ def main():
         analysis_stage.run(args.event_id)
 
         update_analysis_type(db_connection, args.event_id, analysis_type)
+
+        # Record exactly which code + config produced this event, written
+        # last so it captures the fully-mutated (path-resolved) config.
+        provenance_path = os.path.join(
+            config['global']['output'], f"event_{args.event_id}", "provenance.yml")
+        write_provenance(provenance_path, config, args.event_id)
+        update_provenance_path(db_connection, args.event_id, provenance_path)
 
         print("All stages completed successfully, results stored in " + config['global']['output'] + "/event_" + str(args.event_id) + ". Metadata stored in " + args.db_path)
 

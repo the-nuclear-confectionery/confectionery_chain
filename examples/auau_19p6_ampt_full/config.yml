@@ -1,0 +1,133 @@
+# Au+Au @ sqrt(s_NN) = 19.6 GeV — full AMPT-based chain (BES energies, 3+1D)
+# AMPT -> AMPTGenesis -> CCAKE (3+1D, baryon-rich) -> BQSSampler -> SMASH decays -> Q-vectors
+#
+# Parameters follow CCAKE's reference config_ampt_baseline.yaml /
+# config_ampt_t1_source.yaml. Two things that differ from the LHC/ICCING setup:
+#   * baryon-only evolution (strange/electric OFF) on a baryon-rich EoS — at
+#     BES energies the relevant conserved-charge direction is muB;
+#   * the EoS is a baryon-rich holographic table (with a gap table), NOT the
+#     shipped Houston tables/ (which are the muB~0 LHC EoS). You must supply it.
+#
+# Replace every <REPLACE:...>, then:
+#   python wrapper/main.py 0 auau_19p6.db examples/auau_19p6_ampt_full/config.yml
+#
+# NOTE: for symmetric-system statistics, do NOT generate AMPT one-event-per-
+# process — see docs/KNOWN_ISSUES.md (AMPT per-event RNG bias).
+global:
+  output: <REPLACE:/path/for/results>
+  tmp: <REPLACE:/path/for/scratch>
+  basedir: <REPLACE:/path/to/test_chain>
+  nevents: 1
+  grid:
+    x_max: 12.0
+    y_max: 12.0
+    eta_max: 6.0
+    step_x: 0.2
+    step_y: 0.2
+    step_eta: 0.2     # non-zero -> (3+1)D hydro (required by AMPTGenesis)
+  energy:
+    value: 19.6
+    unit: GeV
+  tau_hydro: 1.0      # AMPT/AMPTGenesis tau0 and hydro start time
+  ion_A: Au
+  ion_B: Au
+
+input:
+  initial_conditions:
+    type: ampt
+    parameters:
+      ion_A: {species: Au}
+      ion_B: {species: Au}
+      BMIN: 0.0
+      BMAX: 3.3       # ~0-5% central Au+Au (physical Au+Au max is 25.6 fm)
+      ISOFT: 4        # string melting
+      NTMAX: 150
+      DT: 0.2
+      # AMPT tuning per the canonical bes/19p6 card. PARJ(41)/(42) stay at the
+      # schema defaults (0.55/0.15). The 3 mb parton cross section uses the
+      # alpha + screening-mass pair below (differs from the schema defaults):
+      alpha: 0.47140452
+      parton_screening_mass: 3.2264
+      hijing_seed: random
+      parton_cascade_seed: random
+
+  overlay:
+    type: AMPTGenesis
+    parameters:
+      smearing:
+        sigma_r: 1.0    # transverse smearing (fm), AMPTGenesis standard
+        sigma_eta: 1.0  # longitudinal smearing
+        K: 1.44         # 19.6 GeV normalization (calibrated to dNch/deta); K~1.0 under-energizes the IC
+
+  preequilibrium:
+    type: none
+
+  hydrodynamics:
+    type: CCAKE
+    parameters:
+      dt: 0.05
+      h_T: 0.3
+      h_eta: 0.3
+      rk_order: 2
+      factorized_kernel: true   # 3D factorized SPH kernel
+      energy_cutoff: 0.15
+    hydro:
+      baryon_charge_enabled: false    # baryon-rich; strangeness/electric off
+      strange_charge_enabled: false
+      electric_charge_enabled: false
+      viscous_parameters:
+        shear:
+          mode: constant
+          constant_eta_over_s: 0.08
+        bulk:
+          mode: cs2_dependent
+          constant_zeta_over_s: 0.08
+          modulate_with_tanh: false
+        diffusion:
+          mode: disabled
+    eos:
+      type: table
+      # Shipped tables/ EoS (default path -> basedir/tables). Runs out of the box.
+      # NOTE: at BES energies this clamps muB in the baryon-rich core (the table
+      # tops out near muB ~ 450 MeV). For accurate high-muB physics, point `path`
+      # at a baryon-rich EoS (e.g. eos_paper/bh_us) and set normalize_by_T: false.
+      online_inverter_enabled: true
+      normalize_by_T: true          # correct for the shipped tables/ (bh_us needs false)
+      restrict_mu_T_ratios: true
+      prohibit_unstable_cs2: true
+    particlization:
+      enabled: true
+      type: fixed_T
+      T: 150.0
+    output:
+      txt_evolution: false
+      hdf_evolution: false
+
+  particlization:
+    type: BQSSampler
+    parameters:
+      mode: ccakev2
+      coordinate_system: hyperbolic
+      dimension: 3
+      use_muB: false
+      use_muS: false
+      use_muQ: false
+      samples: 200       # oversampling factor; raise for real statistics
+      sampling_method: regular
+      delta_f_shear: true
+      delta_f_bulk: true
+      normalize_deltaf: true
+      y_max: 5.0
+
+  afterburner:
+    type: smash
+    parameters:
+      decays_only: true
+
+  analysis:
+    type: qvector_writter
+    parameters:
+      n_max: 6
+      calculate_charged: true
+      input_type: smash_hepmc3
+      output_type: root

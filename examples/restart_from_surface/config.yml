@@ -1,0 +1,77 @@
+# Restart from a freeze-out surface — particlization onward, no IC/hydro.
+# BQSSampler -> SMASH decays -> Q-vectors
+#
+# The fastest turnaround loop: re-sample an existing CCAKE freeze-out surface
+# (freeze_out.dat) with different sampler/afterburner settings without re-running
+# hydro. Persist a surface from a hydro run with
+# hydrodynamics.parameters.keep_result: true (writes freeze_out_<id>.dat).
+#
+# Every upstream stage is 'none'; particlization reads the surface directly via
+# particlization.parameters.input_file.
+#
+# Replace every <REPLACE:...>, then:
+#   python wrapper/main.py 0 restart.db examples/restart_from_surface/config.yml
+global:
+  output: <REPLACE:/path/for/results>
+  tmp: <REPLACE:/path/for/scratch>
+  basedir: <REPLACE:/path/to/test_chain>
+  nevents: 1
+  grid:                 # kept for schema completeness; unused when hydro is 'none'
+    x_max: 12.0
+    y_max: 12.0
+    eta_max: 10.0
+    step_x: 0.1
+    step_y: 0.1
+    step_eta: 0.0
+  energy:
+    value: 5.02
+    unit: TeV
+  tau_hydro: 0.6
+  ion_A: Pb
+  ion_B: Pb
+
+input:
+  initial_conditions:
+    type: none
+
+  overlay:
+    type: none
+
+  preequilibrium:
+    type: none
+
+  hydrodynamics:
+    type: none
+
+  particlization:
+    type: BQSSampler
+    parameters:
+      input_file: <REPLACE:/path/to/freeze_out.dat>   # a CCAKE freeze-out surface (e.g. freeze_out_0.dat)
+      mode: ccakev2
+      coordinate_system: hyperbolic
+      dimension: 2            # match the surface (2 for boost-invariant, 3 for 3+1D)
+      use_muB: true           # sample with BSQ chemical potentials (set false for charge-less surfaces)
+      use_muS: true
+      use_muQ: true
+      force_temperature: false
+      samples: 500            # oversampling factor
+      sampling_method: regular
+      delta_f_shear: true
+      delta_f_bulk: false
+      normalize_deltaf: true
+      eos_column: true        # false for old surfaces without the col-44 EoS flag
+      y_max: 5.0
+      seed: random
+
+  afterburner:
+    type: smash
+    parameters:
+      decays_only: true
+
+  analysis:
+    type: qvector_writter
+    parameters:
+      n_max: 6
+      calculate_charged: true
+      input_type: smash_hepmc3
+      output_type: root

@@ -23,8 +23,12 @@ class AmptInitialCondition(InitialCondition):
             EFRM = EFRM / 1000
         else:
             raise ValueError(f"Unknown energy unit: {self.config['global']['energy']['units']}")
-        #convert to int and save
-        self.config['input']['initial_conditions']['parameters']['EFRM'] = int(EFRM)
+        # AMPT's EFRM (sqrt(s_NN) in GeV) is a float — do NOT truncate to int,
+        # or BES energies collapse (19.6 -> 19). Keep the exact value; drop a
+        # trailing .0 only for whole numbers (e.g. 5020.0 -> 5020).
+        EFRM = float(EFRM)
+        self.config['input']['initial_conditions']['parameters']['EFRM'] = \
+            int(EFRM) if EFRM.is_integer() else EFRM
         
         # read ion A and ion B
         ion_mapping = {
@@ -174,52 +178,61 @@ class AmptInitialCondition(InitialCondition):
 
         # Step 1: Create a temporary working directory for this event
         tmp_ampt_dir = os.path.join(self.config['global']['tmp'], f"event_{event_id}", 'ampt')
-        os.makedirs(tmp_ampt_dir, exist_ok=True)
+        os.makedirs(os.path.join(tmp_ampt_dir, 'ana'), exist_ok=True)
         print(f"Created temporary working directory: {tmp_ampt_dir}")
 
-        # Step 2: Copy the entire models/AMPT directory to the temporary working directory
-        ampt_base_dir = self.config['global']['basedir'] + '/models/AMPT'
-        print(f"Copying AMPT base directory from {ampt_base_dir} to {tmp_ampt_dir}")
-        shutil.copytree(ampt_base_dir, tmp_ampt_dir, dirs_exist_ok=True)
-        print(f"Copied the entire AMPT directory from {ampt_base_dir} to {tmp_ampt_dir}")
-        # remove the ana directory
-        #shutil.rmtree(os.path.join(tmp_ampt_dir, 'ana'))
+        # Step 2: Copy the prebuilt ampt binary (models/AMPT is built once by
+        # `./chain install`; per-event we only need the binary + input files)
+        ampt_binary = os.path.join(self.config['global']['basedir'], 'models', 'AMPT', 'ampt')
+        if not os.path.isfile(ampt_binary):
+            raise FileNotFoundError(
+                f"AMPT binary not found at {ampt_binary} — build it with: ./chain rebuild ampt")
+        shutil.copy2(ampt_binary, os.path.join(tmp_ampt_dir, 'ampt'))
+        os.chmod(os.path.join(tmp_ampt_dir, 'ampt'), 0o755)
 
-        # create empty ana directory
-        os.makedirs(os.path.join(tmp_ampt_dir, 'ana'), exist_ok=True)
-
-        # Step 3: Copy the generated config file to the temporary directory
+        # Step 3: Generate input.ampt and the runtime seed file (used by AMPT
+        # when ihjsed=11; harmless otherwise). Mirrors the upstream exec script
+        # without the per-event `make`.
         config_file_path = self.create_temp_config(event_id)
         shutil.copy(config_file_path, os.path.join(tmp_ampt_dir, 'input.ampt'))
+        shutil.copy(config_file_path, os.path.join(tmp_ampt_dir, 'ana', 'input.ampt'))
+        hijing_seed = self.config['input']['initial_conditions']['parameters']['hijing_seed']
+        nseed_path = os.path.join(tmp_ampt_dir, 'nseed_runtime')
+        with open(nseed_path, 'w') as f:
+            f.write(f"{hijing_seed}\n")
 
-        # Step 4: Run AMPT using ./exec in the temporary directory
-        os.chdir(tmp_ampt_dir)
+        # Step 4: Run AMPT (fail loudly — a broken IC must abort the chain)
         print(f"Running AMPT for event {event_id} in {tmp_ampt_dir} ...")
-        try:
-            subprocess.run(['./exec'], check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"Error during AMPT execution for event {event_id}: {e}")
-            return
+        with open(nseed_path) as stdin_f, \
+             open(os.path.join(tmp_ampt_dir, 'nohup.out'), 'w') as stdout_f:
+            subprocess.run(['./ampt'], cwd=tmp_ampt_dir, stdin=stdin_f,
+                           stdout=stdout_f, stderr=subprocess.STDOUT, check=True)
 
         # Step 5: Copy results to the final output directory
         output_dir = os.path.join(self.config['global']['output'], f"event_{event_id}", 'ampt')
         os.makedirs(output_dir, exist_ok=True)
-        #copy parton-collisionsHistory.dat,parton-initial-afterPropagation.dat
-        # ampt.dat dnde_ch.dat
-
-        shutil.copy(os.path.join(tmp_ampt_dir, 'ana/parton-collisionsHistory.dat'), output_dir)
-        shutil.copy(os.path.join(tmp_ampt_dir, 'ana/parton-initial-afterPropagation.dat'), output_dir)
-        shutil.copy(os.path.join(tmp_ampt_dir, 'ana/ampt.dat'), output_dir)
-        shutil.copy(os.path.join(tmp_ampt_dir, 'ana/dnde_ch.dat'), output_dir)
-
+        required_outputs = [
+            'parton-collisionsHistory.dat',
+            'parton-initial-afterPropagation.dat',
+            'ampt.dat',
+            'dnde_ch.dat',
+        ]
+        for name in required_outputs:
+            shutil.copy(os.path.join(tmp_ampt_dir, 'ana', name), output_dir)
+        # vertex files used by jet sampling (jets_sampling); written by the
+        # the-nuclear-confectionery AMPT fork
+        optional_outputs = ['binary-collisions.dat', 'minijet-initial-beforePropagation.dat']
+        for name in optional_outputs:
+            src = os.path.join(tmp_ampt_dir, 'ana', name)
+            if os.path.isfile(src):
+                shutil.copy(src, output_dir)
+            else:
+                print(f"WARNING: ana/{name} not produced — jet sampling "
+                      "(jets_sampling) will not work with this AMPT build.")
 
         print(f"AMPT output copied to {output_dir}")
 
-        # Step 6: Clean up the temporary working directory
-        #shutil.rmtree(tmp_ampt_dir)
-
         #insert initial condition into db
-        hijing_seed = self.config['input']['initial_conditions']['parameters']['hijing_seed']
         parton_cascade_seed = self.config['input']['initial_conditions']['parameters']['parton_cascade_seed']
         print(f"Writing initial condition to db with hijing_seed={hijing_seed}, parton_cascade_seed={parton_cascade_seed}")
         insert_initial_condition(self.db_connection, event_id, hijing_seed, parton_cascade_seed, "AMPT")

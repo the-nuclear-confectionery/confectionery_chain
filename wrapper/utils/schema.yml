@@ -96,7 +96,8 @@ properties:
             enum:
               - Trento
               - ampt
-            description: "Type of initial conditions to be used (Trento or ampt)."
+              - none
+            description: "Type of initial conditions to be used (Trento, ampt, or none to disable — e.g. restarting from an existing hydro IC or freeze-out surface)."
           parameters:
             type: object
         allOf:
@@ -299,8 +300,8 @@ properties:
                           description: "Species of the second ion (e.g., Pb, Au)."
                     EFRM:
                       type: number
-                      default: 502000
-                      description: "sqrt(S_NN) in GeV if FRAME is CMS."
+                      default: 19.6
+                      description: "sqrt(S_NN) in GeV if FRAME is CMS. NOTE: taken as-is (not derived from global.energy); default matches the bes/19p6 Au+Au card."
                     FRAME:
                       type: string
                       enum:
@@ -317,20 +318,20 @@ properties:
                       description: "Target."
                     IAP:
                       type: integer
-                      default: 207
-                      description: "Projectile A number."
+                      default: 197
+                      description: "Projectile A number (default 197 = Au, bes/19p6 card)."
                     IZP:
                       type: integer
-                      default: 82
-                      description: "Projectile Z number."
+                      default: 79
+                      description: "Projectile Z number (default 79 = Au, bes/19p6 card)."
                     IAT:
                       type: integer
-                      default: 207
-                      description: "Target A number."
+                      default: 197
+                      description: "Target A number (default 197 = Au, bes/19p6 card)."
                     IZT:
                       type: integer
-                      default: 82
-                      description: "Target Z number."
+                      default: 79
+                      description: "Target Z number (default 79 = Au, bes/19p6 card)."
                     NEVNT:
                       type: integer
                       default: 1
@@ -341,8 +342,8 @@ properties:
                       description: "Minimum impact parameter in fm."
                     BMAX:
                       type: number
-                      default: 50.0
-                      description: "Maximum impact parameter in fm."
+                      default: 25.60
+                      description: "Maximum impact parameter in fm (25.60 = Au+Au upper limit HIPR1(34)+HIPR1(35), bes/19p6 card)."
                     ISOFT:
                       type: integer
                       default: 4
@@ -381,24 +382,24 @@ properties:
                       description: "Flag for quenching (0 for no, 1 for yes)."
                     quenching_parameter:
                       type: number
-                      default: 2.0
-                      description: "Quenching parameter -dE/dx (GeV/fm)."
+                      default: 1.0
+                      description: "Quenching parameter -dE/dx (GeV/fm) when quenching_flag=1 (bes/19p6 card)."
                     p0_cutoff:
                       type: number
                       default: 2.0
                       description: "p0 cutoff in HIJING for minijet productions."
                     parton_screening_mass:
                       type: number
-                      default: 2.265
-                      description: "Parton screening mass in fm^(-1)."
+                      default: 3.2264
+                      description: "Parton screening mass in fm^(-1). 3.2264 gives a 3 mb parton cross section when paired with alpha=0.47140452 (bes/19p6 card); the AMPT-manual 3 mb pair is 2.265 with alpha=0.33."
                     IZPC:
                       type: integer
                       default: 0
                       description: "Flag for forward-angle parton scatterings."
                     alpha:
                       type: number
-                      default: 0.33
-                      description: "Alpha in parton cascade."
+                      default: 0.47140452
+                      description: "Alpha in parton cascade (paired with parton_screening_mass=3.2264 for 3 mb, bes/19p6 card)."
                     dpcoal:
                       type: number
                       default: !!float 1e6
@@ -410,7 +411,7 @@ properties:
                     ihjsed:
                       type: integer
                       default: 0
-                      description: "HIJING seed flag, if 11 will generate seed at ampt runtime"
+                      description: "HIJING seed flag (11 = generate seed at ampt runtime). Kept 0 (NOT the bes/19p6 card's 11) so the wrapper's hijing_seed becomes NSEED and drives all generators reproducibly — see docs/KNOWN_ISSUES.md #1."
                     hijing_seed:
                       anyOf:
                         - type: string
@@ -522,8 +523,8 @@ properties:
         properties:
           type:
             type: string
-            enum: [ICCING, AMPTGenesis]
-            description: "Type of overlay (ICCING or AMPTGenesis)."
+            enum: [ICCING, AMPTGenesis, none]
+            description: "Type of overlay (ICCING, AMPTGenesis, or none to disable)."
           parameters:
             type: object
         allOf:
@@ -721,26 +722,44 @@ properties:
                           type: number
                           default: 2.0
                           description: "Normalization factor for smearing."
+                        backpropagate:
+                          type: boolean
+                          default: false
+                          description: "If true, partons that form after tau0 are free-streamed backward onto the tau0 surface (energy-conserving); if false they are dropped."
+                    sample_radius:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        xy:
+                          type: number
+                          default: 2.0
+                          description: "Deposition scan radius in the transverse plane, in multiples of sigma_r."
+                        eta:
+                          type: number
+                          default: 2.0
+                          description: "Deposition scan radius in eta, in multiples of sigma_eta."
+                    energy_density_cutoff:
+                      type: number
+                      default: 0.15
+                      description: "Minimum energy density (GeV/fm^3) for a cell to be written to the IC. Defaults to the CCAKE energy_cutoff when omitted."
 
       preequilibrium:
         type: object
         properties:
           type:
             type: string
-            enum: [freestreaming]
-        properties:
+            enum: [freestreaming, none]
           input_file:
             type: string
             default: default
             description: "Path to the input file for preequilibrium."
-        
+
       hydrodynamics:
         type: object
         properties:
           type:
             type: string
-            enum: [CCAKE]
-        properties:
+            enum: [CCAKE, none]
           initial_conditions:
             type: object
             additionalProperties: false
@@ -802,6 +821,10 @@ properties:
                 enum: [cubic_spline]
                 default: cubic_spline
                 description: "Kernel type for smoothing."
+              factorized_kernel:
+                type: boolean
+                default: false
+                description: "Use the factorized 3D SPH kernel W_2D(r_perp,h_T)*W_1D(deta,h_eta). Recommended for (3+1)D runs."
               energy_cutoff:
                 type: number
                 default: 0.15
@@ -852,7 +875,36 @@ properties:
               normalize_by_T:
                 type: boolean
                 default: false
-                description: "Normalize EoS table entries by T (required for some 4D/BSQ tables)."
+                description: "Normalize EoS table entries by T (required for BSQ/Houston tables to invert cleanly)."
+              restrict_mu_T_ratios:
+                type: boolean
+                default: false
+                description: "Clamp mu/T ratios to the table's valid range (recommended with BSQ tables)."
+              prohibit_unstable_cs2:
+                type: boolean
+                default: true
+                description: "Reject EoS points with unstable (negative) speed of sound squared."
+              prohibit_acausal_cs2:
+                type: boolean
+                default: true
+                description: "Reject EoS points with acausal (cs2 > 1) speed of sound squared."
+              gap_table_path:
+                type: string
+                default: ""
+                description: "Path to a gap-EoS table (holographic / critical-point EoS); empty disables it."
+              gap_lookup_mode:
+                type: string
+                enum: [linear]
+                default: linear
+                description: "Interpolation mode for the gap-EoS table."
+              gap_analytic_enabled:
+                type: boolean
+                default: false
+                description: "Use the analytic gap-EoS instead of a table."
+              gap_match_tolerance:
+                type: number
+                default: 0.05
+                description: "Matching tolerance between the base and gap EoS tables."
 
           particlization:
             type: object
@@ -1006,9 +1058,9 @@ properties:
                         description: "Whether to read an initial diffusion current from input."
                       mode:
                         type: string
-                        enum: [constant_over_T2]
+                        enum: [constant_over_T2, disabled]
                         default: constant_over_T2
-                        description: "Diffusion coefficient mode."
+                        description: "Diffusion coefficient mode ('disabled' turns off baryon/charge diffusion)."
                       constant_kappa_over_T2:
                         type: array
                         minItems: 3
@@ -1051,6 +1103,30 @@ properties:
                           muB:
                             type: number
                             description: "Gaussian width in muB around the critical point (MeV)."
+                      regulator:
+                        type: object
+                        additionalProperties: false
+                        properties:
+                          enabled:
+                            type: boolean
+                            default: false
+                            description: "Enable the diffusion-current regulator."
+                          chi0:
+                            type: number
+                            default: 10.0
+                            description: "Overall regulation strength (dimensionless)."
+                          e0:
+                            type: number
+                            default: 0.1
+                            description: "Critical energy density e_0 (GeV/fm^3)."
+                          xi0:
+                            type: number
+                            default: 0.01
+                            description: "Regulator width parameter xi_0 (GeV/fm^3)."
+                          rq_max:
+                            type: number
+                            default: 1.0
+                            description: "Maximum allowed r_q (dimensionless)."
               source:
                 type: object
                 properties:
@@ -1066,11 +1142,15 @@ properties:
                     description: "Model used for source term."
                   smearing_radius:
                     type: number
-                    default: 1.0
-                    description: "Smearing radius for source term in fm."
-                  file_path:
+                    default: 0.5
+                    description: "Transverse smearing radius for source term in fm."
+                  smearing_radius_eta:
+                    type: number
+                    default: 0.5
+                    description: "Longitudinal (eta) smearing radius for source term."
+                  file:
                     type: string
-                    default: ""
+                    default: "disabled"
                     description: "Path to the source term file."
                   normalization:
                     type: number
@@ -1084,37 +1164,133 @@ properties:
                     type: boolean
                     default: false
                     description: "Enable electric charge source term."
-                  enable_strange:
+                  enable_strangeness:
                     type: boolean
                     default: false
-                    description: "Enable strange charge source term."
+                    description: "Enable strangeness source term."
+                  propagate:
+                    type: boolean
+                    default: false
+                    description: "If true, sources propagate and deplete like jets."
+                  loss_coefficient:
+                    type: number
+                    default: 0.0
+                    description: "Energy-loss coefficient for propagating sources."
+                  entropy_ref:
+                    type: number
+                    default: 1.0
+                    description: "Reference entropy for source deposition."
+                  deposit_steps:
+                    type: integer
+                    default: 1
+                    description: "Number of timesteps over which a source deposits."
                       
               jets:
                 type: object
+                additionalProperties: false
                 properties:
                   type:
                     type: string
-                    enum: [full,source,disabled]
+                    enum: [BBMG, disabled]
                     default: disabled
-                    description: "Type of source term in hydrodynamics."
+                    description: "Jet treatment; 'BBMG' initializes and propagates BBMG jets (any non-'disabled' value works). To feed the jet energy loss back into the fluid, also set hydro.source.type=jet and hydro.source.model=BBMG."
                   Energy_scaling:
-                    type: number
+                    type: integer
                     default: 0
                     description: "Value of 'a' in the BBMG model."
                   Path_Length_scaling:
-                    type: number
-                    enum: [0,1,2]  
+                    type: integer
+                    enum: [0, 1, 2]
                     default: 1
                     description: "Value of 'z' in the BBMG model."
                   Fluctuation_parameter:
-                    type: number
+                    type: integer
                     default: 0
                     description: "Value of 'q' in the BBMG model."
-                  Phi_bins:
+                  input_mode:
+                    type: string
+                    enum: [hardcoded, file, sampled]
+                    default: hardcoded
+                    description: "Jet source: fixed parameters (hardcoded), a jets file with 'x y eta pT phi rapidity' rows (file), or random sampling over hot SPH particles (sampled)."
+                  input_file:
+                    type: string
+                    default: ""
+                    description: "Path to the jets file for input_mode 'file'. Set automatically when jets_sampling is enabled."
+                  auto_partner:
+                    type: boolean
+                    default: true
+                    description: "For file input: also create the back-to-back partner of each listed jet."
+                  pT:
                     type: number
-                    default: 7
-                    description: "Number of phi directions to initialize jets"
+                    default: 10.0
+                    description: "Jet transverse momentum in GeV (hardcoded mode)."
+                  phi:
+                    type: number
+                    default: 0.0
+                    description: "Jet azimuthal angle in rad (hardcoded mode)."
+                  rapidity:
+                    type: number
+                    default: 0.0
+                    description: "Jet rapidity (hardcoded/sampled mode)."
+                  x0:
+                    type: number
+                    default: 0.0
+                    description: "Jet production point x in fm (hardcoded mode)."
+                  y0:
+                    type: number
+                    default: 0.0
+                    description: "Jet production point y in fm (hardcoded mode)."
+                  eta0:
+                    type: number
+                    default: 0.0
+                    description: "Jet production point eta (hardcoded mode)."
+                  sampling:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      njet:
+                        type: integer
+                        default: 200000
+                        description: "Number of jets per event (sampled mode)."
+                      sample_rapidity:
+                        type: boolean
+                        default: false
+                        description: "Sample rapidity uniformly in ±rapidity_max instead of using a fixed value."
+                      rapidity_max:
+                        type: number
+                        default: 1.0
+                        description: "Maximum |rapidity| when sample_rapidity is true."
               
+          jets_sampling:
+            type: object
+            additionalProperties: false
+            properties:
+              enabled:
+                type: boolean
+                default: false
+                description: "Sample dijets from this event's collision geometry (utils/sample_dijets) and feed them to CCAKE via hydro.jets input_mode 'file'. Requires hydro.jets.type != 'disabled' and either initial_conditions type 'ampt' (vertex_source binary/minijet) or 'Trento' with ncoll:true (vertex_source trento)."
+              n_dijets:
+                type: integer
+                minimum: 1
+                default: 1
+                description: "Number of dijet pairs to sample per event."
+              pt_min:
+                type: number
+                default: 100.0
+                description: "Lower edge of the PYTHIA pT-hat window in GeV."
+              pt_max:
+                type: number
+                default: 200.0
+                description: "Upper edge of the PYTHIA pT-hat window in GeV."
+              vertex_source:
+                type: string
+                enum: [binary, minijet, trento]
+                default: binary
+                description: "Where dijet production vertices are sampled from: AMPT binary collisions (binary), AMPT minijets (minijet), or TRENTo binary collisions / ncoll_list (trento, requires TRENTo IC with ncoll:true)."
+              tau:
+                type: number
+                description: "Milne proper time (fm/c) the sampled partons are free-streamed to. Defaults to global.tau_hydro."
+
           output:
             type: object
             properties:
@@ -1138,14 +1314,34 @@ properties:
                 type: boolean
                 default: false
                 description: "Check for causality violations during the simulation."
-              
+              causality_minimal:
+                type: boolean
+                default: false
+                description: "Run the reduced (minimal) causality check instead of the full one."
+              causality_minimal_stride:
+                type: integer
+                default: 20
+                description: "Timestep stride for the minimal causality check."
+              evolution_stride:
+                type: integer
+                default: 1
+                description: "Write evolution output every N timesteps."
+              get_neighbors:
+                type: boolean
+                default: false
+                description: "Dump each particle's SPH neighbor list (debug)."
+              jet_evolution:
+                type: boolean
+                default: false
+                description: "Dump per-step jet state (jet_state_*.dat) when jets are active."
+
 
       particlization:
         type: object
         properties:
           type:
             type: string
-            enum: [is3d, analytical, BQSSampler]      
+            enum: [is3d, analytical, BQSSampler, none]   # none to disable
         allOf:
           # ---- iS3D ----
           - if:
@@ -1414,7 +1610,7 @@ properties:
         properties:
           type:
             type: string
-            enum: [qvector_writter]
+            enum: [qvector_writter, none]   # none to disable
           parameters:
             type: object
             properties:

@@ -1,0 +1,36 @@
+description: 'T2 physics-observable references (fixed-seed restart-from-surface: BQSSampler
+  -> SMASH decays-only -> qvector). v_n are integrated event-plane values at |eta|<0.5.'
+systems:
+  auau_19p6_ampt:
+    surface: auau_freeze_out.dat
+    samples: 500
+    afterburner: decays_only
+    observables:
+      nsamples: 500.0
+      dNch_deta_mid: 977.7900000000034
+      mean_pt_charged: 0.5279237361805705
+      v2: 0.031982205626695626
+      v3: 0.015933306118997632
+  pbpb_5p02_trento_iccing:
+    surface: pbpb_freeze_out.dat
+    samples: 100
+    afterburner: decays_only
+    observables:
+      nsamples: 100.0
+      dNch_deta_mid: 1967.150000000007
+      mean_pt_charged: 0.7263918613222173
+      v2: 0.06483682817360956
+      v3: 0.028574783433835477
+tolerances:
+  dNch_deta_mid: 0.05
+  mean_pt_charged: 0.03
+  v2: 0.15
+  v3: 0.2
+provenance:
+  analysis/qvector_analysis: ed0ed4c3a229588859da0c6a93adf1b51ba0c87e
+  models/AMPT: f5d81232908ce3031969cbb25f004756152d834a
+  models/AMPTGenesis: 78a7f10a28623f0b396097a0f9d8eba673da2cc3
+  models/BQSSampler: 9d90c7fd27e7e768b6b66b51da67c19b6fa362e1
+  models/CCAKE: 0024421fdda39e5448f575143f6ca07a3052a8f3
+  models/qvector_writter: 09a058440068da214b82e2b710927d37effbd11e
+  models/smash: 7f30407a338b57218683b0892122ff355e11df7b
