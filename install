@@ -116,11 +116,9 @@ cmake ..
 make -j8
 
 
-cd $WORKDIR/models/iS3D
-mkdir build && cd build
-cmake .. -DCMAKE_POLICY_VERSION_MINIMUM=3.5   # iS3D declares cmake_minimum 2.8, rejected by cmake>=4
-make -j8 install   # NOTE: iS3D also has a gcc-13 source bug (readindata.cpp 'surface_file' undeclared);
-                   # it is an ALTERNATE sampler, OFF the critical path (chain uses BQSSampler), so a failure here does not block reproduction
+# iS3D removed from the install chain (legacy alternate sampler; the chain uses
+# BQSSampler). Its source also has a gcc-13 build error, so building it only added
+# time and noise.
 
 cd $WORKDIR/models/BQSSampler
 cat tables/grad_coeffs.dat.part_* > tables/grad_coeffs.dat
@@ -167,7 +165,6 @@ make -j8
 cd $WORKDIR
 mkdir -p tables
 mkdir -p tables/ICCING
-mkdir -p tables/iS3D
 mkdir -p tables/BQSSampler
 mkdir -p tables/analytical_cooperfrye
 
@@ -178,10 +175,6 @@ cp -rf $WORKDIR/models/ICCING/Input/*.dat tables/ICCING/
 cp -rf $WORKDIR/models/ICCING/Input/*.txt tables/ICCING/
 cp -rf $WORKDIR/models/ICCING/Greens_Function/*.txt tables/ICCING/
 
-
-cp -rf $WORKDIR/models/iS3D/tables tables/iS3D
-cp -rf $WORKDIR/models/iS3D/PDG tables/iS3D
-cp -rf $WORKDIR/models/iS3D/deltaf_coefficients tables/iS3D
 
 cp -rf $WORKDIR/models/BQSSampler/tables/*.dat tables/BQSSampler/
 
