@@ -24,7 +24,7 @@ make -j8 install
 
 cd $PREFIX
 
-wget https://pythia.org/download/pythia83/pythia8316.tgz
+wget https://pythia.org/releases/pythia83/pythia8316.tgz   # was /download/: that path 404s now
 tar xf pythia8316.tgz && rm pythia8316.tgz
 cd pythia8316
 ./configure --prefix=${PREFIX} --with-hepmc3=${PREFIX}/HepMC3 --cxx-common='-std=c++17 -march=native -O3 -fPIC -pthread'
@@ -118,8 +118,9 @@ make -j8
 
 cd $WORKDIR/models/iS3D
 mkdir build && cd build
-cmake ..
-make -j8 install
+cmake .. -DCMAKE_POLICY_VERSION_MINIMUM=3.5   # iS3D declares cmake_minimum 2.8, rejected by cmake>=4
+make -j8 install   # NOTE: iS3D also has a gcc-13 source bug (readindata.cpp 'surface_file' undeclared);
+                   # it is an ALTERNATE sampler, OFF the critical path (chain uses BQSSampler), so a failure here does not block reproduction
 
 cd $WORKDIR/models/BQSSampler
 cat tables/grad_coeffs.dat.part_* > tables/grad_coeffs.dat

@@ -19,7 +19,7 @@ dependencies:
   - hdf5
   - zlib
   - doxygen
-  - gsl=2.7.1
+  - gsl=2.7        # was 2.7.1: that patch version is not on conda-forge (only the defaults channel)
   - cmake
   - eigen=3.4.0
   - yaml-cpp
