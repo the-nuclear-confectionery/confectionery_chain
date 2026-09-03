@@ -1,7 +1,11 @@
 #!/usr/bin/bash
 
-git submodule update --init --recursive
-git submodule update 
+# From a git checkout, pull the pinned submodules. From an extracted source
+# archive (no .git) the submodule sources are already present, so skip cleanly.
+if [ -d .git ]; then
+  git submodule update --init --recursive
+  git submodule update
+fi
 
 export PREFIX=${CONDA_PREFIX}
 export WORKDIR=${PWD}

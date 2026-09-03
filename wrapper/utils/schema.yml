@@ -96,7 +96,8 @@ properties:
             enum:
               - Trento
               - ampt
-            description: "Type of initial conditions to be used (Trento or ampt)."
+              - none
+            description: "Type of initial conditions (Trento, ampt, or none to use an existing event via the overlay)."
           parameters:
             type: object
         allOf:

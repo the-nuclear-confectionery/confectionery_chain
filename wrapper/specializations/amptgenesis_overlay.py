@@ -15,8 +15,15 @@ class AmptGenesisOverlay(Overlay):
         if self.config['global']['grid']['step_eta'] == 0:
             raise ValueError("step_eta must be different from 0 for AMPTGenesis")
         
-        #check if initial condition is AMPT
-        if self.config['input']['initial_conditions']['type'] == "none":
+        #resolve a relative overlay input path against basedir (so a repo-relative
+        # path like sample_run/AMPT_evt0008/ana works from any working directory)
+        _inp = self.config['input']['overlay']['parameters']['paths']['input']
+        if _inp not in (None, "default") and not os.path.isabs(_inp):
+            self.config['input']['overlay']['parameters']['paths']['input'] = \
+                os.path.join(self.config['global']['basedir'], _inp)
+
+        #check if initial condition is AMPT (main.py normalizes the string 'none' to Python None)
+        if self.config['input']['initial_conditions']['type'] in (None, "none"):
             #check if input path is default
             if self.config['input']['overlay']['parameters']['paths']['input'] == "default":
                 raise ValueError("input path must be set for AMPTGenesis when initial condition is none")
@@ -33,7 +40,7 @@ class AmptGenesisOverlay(Overlay):
         if self.config['input']['overlay']['parameters']['paths']['output'] == "default":
             self.config['input']['overlay']['parameters']['paths']['output'] = os.path.join(self.config['global']['output'], f"event_{event_id}", 'amptgenesis','amptgenesis.dat')
             
-        if self.config['input']['preequilibrium']['type'] != None:
+        if self.config['input']['preequilibrium']['type'] not in (None, 'none'):
                         raise ValueError("Preequilibrium type must be 'none' when using AMPTGenesis overlay.")
     def create_amptgenesis_config(self, event_id):
         """
@@ -111,15 +118,24 @@ class AmptGenesisOverlay(Overlay):
         insert_overlay(
             self.db_connection,
             event_id,
-            0,
-            0,
-            0,
-            0,
-            0,
+            0,                 # seed
             "AMPTGenesis"
         )
 
     def convert_amptgenesis_format(self, input_file, output_file):
+        # Current AMPTGenesis writes the CCAKE IC format DIRECTLY (first line
+        # "#0 stepx stepy stepEta 0 xmin ymin etamin"), not the older native format
+        # with "Lx="/"Ly="/"Leta=" header lines this function was written for. In that
+        # case pass it through unchanged (as the paper convergence runs did — CCAKE
+        # loads the IC as written; input_initial_shear/bulk in the CCAKE config decide
+        # what is used).
+        with open(input_file) as _f:
+            _first = _f.readline()
+        if _first.startswith("#0"):
+            import shutil
+            shutil.copyfile(input_file, output_file)
+            return
+
         # Initialize variables to hold header information
         nx = ny = neta = Lx = Ly = Leta = None
         xmin = ymin = etamin = None

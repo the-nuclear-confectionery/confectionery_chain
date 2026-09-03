@@ -1,0 +1,18 @@
+pids: []
+max_n: 5
+
+cuts:
+  eta_cut: 0.5
+  pt_min: 0.2
+  pt_max: 3.0
+
+calculate_charged: true
+
+observables:
+  integrated: ["M", "mean_pT", "vn{2}", "vn{EP}", "vn{4}"]
+  differential: ["dN/deta", "vn{2}_eta", "vn{2}_pt"]
+
+output:
+  directory: "qvector_out"
+  prefix: "q_vector_analysis"
+  format: "dat"

@@ -28,6 +28,13 @@ Activate the environment with:
 
 conda activate ctop
 
+Note (faster / more reliable): the classic conda solver can stall for a long time at
+"Collecting package metadata". For a fast, deterministic setup use the pinned lock file
+(no solving), or mamba:
+
+conda create -n ctop --file conda-lock.txt        # skips the solver entirely
+# or:  mamba env create -f environment.yaml
+
 ---
 
 ## 3. Install the Project
@@ -72,3 +79,23 @@ $WORKDIR/scripts
 
 Modify the script as needed and submit it using SLURM.
 
+---
+
+## 6. Example run (sample test -> v_n figure)
+
+`examples/input_sample_19p6.yml` Runs the whole chain and produces an integrated charged-particle v_n figure on the manuscript.
+
+
+The initial condition is bundled in the repo (`sample_run/AMPT_evt0008/ana`)
+and `examples/input_sample_19p6.yml` already points at it
+
+    conda activate ctop
+    # 1.Run the chain:
+    python wrapper/main.py 0 sample.db examples/input_sample_19p6.yml     # -> sample_output/event_0/q_0.root
+    # 2. Run the analysis code and plotting script:
+    analysis/qvector_analysis/build/qvector_analysis sample_run/configs/qvector_analysis.yaml \
+        sample_output/event_0/q_0.root
+    python sample_run/plot_vn.py qvector_out                              # -> vn_integrated.png
+
+Step 1 runs AMPTGenesis -> CCAKE -> BQSSampler -> SMASH -> qvector; step 2 turns the `q_0.root` into
+charged integrated `v_n^{EP}` and plots it in the manuscript style. Runtime ~15-20 min (the SMASH decay of ~1.8M sampled particles dominates; set by `samples` in the scenario).

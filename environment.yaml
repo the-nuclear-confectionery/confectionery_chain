@@ -9,6 +9,7 @@ dependencies:
   - matplotlib
   - pandas
   - uproot
+  - pyyaml        # required by wrapper/main.py (yaml-cpp is C++, not python)
   - seaborn
   
   # General libraries and tools

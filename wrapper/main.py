@@ -39,7 +39,19 @@ def main():
     #config = InputFile("input.yml").get_parameters()
     config = InputFile(args.config_path).get_parameters()
 
-    # Create results and tmp directories for event id 
+    # --- auto-fill machine paths so a scenario runs with no hand-editing ---
+    # basedir defaults to this repo (the parent of wrapper/); output/tmp default under it.
+    # Set any of these to a real path in the yaml to override.
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    g = config['global']
+    if str(g.get('basedir', 'default')).lower() in ('default', 'none', ''):
+        g['basedir'] = repo_root
+    if str(g.get('output', 'default')).lower() in ('default', 'none', ''):
+        g['output'] = os.path.join(g['basedir'], 'sample_output')
+    if str(g.get('tmp', 'default')).lower() in ('default', 'none', ''):
+        g['tmp'] = os.path.join(g['basedir'], 'sample_tmp')
+
+    # Create results and tmp directories for event id
     os.makedirs(os.path.join(config['global']['output'], f"event_{args.event_id}"), exist_ok=True)
     os.makedirs(os.path.join(config['global']['tmp'], f"event_{args.event_id}"), exist_ok=True)
     tables_dir = os.path.join(config['global']['basedir'], "tables")
